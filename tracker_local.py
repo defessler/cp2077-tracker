@@ -5,7 +5,8 @@ tracker_local.py  ·  Cyberpunk 2077 100% Completion Tracker
 Reads your most recent save and generates a local HTML dashboard
 tracking every major content category towards 100% completion.
 
-No dependencies — pure Python stdlib.
+No pip dependencies required. Uses CyberpunkPythonHacks (tools/) for richer
+sav.dat fact parsing when available; falls back to metadata.json otherwise.
 
 USAGE
 ──────
@@ -19,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import struct
 import sys
 import webbrowser
 from datetime import datetime, timedelta
@@ -159,20 +161,20 @@ QUEST_CATALOG = [
       {"id": "q304_netrunners",    "name": "I've Seen That Face Before",   "dep": "after Firestarter",                  "check_id": "q304", "tags": ["pl-main", "songbird"]},
       {"id": "q304_stadium",       "name": "Birds with Broken Wings",      "dep": "after I've Seen That Face Before",   "check_id": "q304", "tags": ["pl-main"]},
       # Branches after Birds with Broken Wings — Reed or Songbird path
-      # Reed path
-      {"id": "q305_prison_convoy",  "name": "Black Steel in the Hour of Chaos", "dep": "Birds with Broken Wings: Reed path",    "check_id": "sa_ep1_32", "tags": ["pl-main", "reed"]},
-      {"id": "q305_bunker",         "name": "Somewhat Damaged",                 "dep": "after Black Steel (Reed path)",         "check_id": "sa_ep1_32", "tags": ["pl-main", "reed"]},
-      {"id": "q305_postcontent",    "name": "This Corrosion",                   "dep": "after Somewhat Damaged (Reed path)",    "check_id": "sa_ep1_32", "tags": ["pl-main", "reed"]},
-      {"id": "q305_reed_epilogue",  "name": "Four Score and Seven",             "dep": "Reed path finale",                      "check_id": "sa_ep1_32", "tags": ["pl-main", "ending", "reed"]},
-      {"id": "q306_postcontent",    "name": "From Her to Eternity",             "dep": "Four Score and Seven (Reed path)",      "check_id": "sa_ep1_32", "tags": ["pl-main", "ending", "reed"]},
-      {"id": "q306_reed_epilogue",  "name": "Through Pain to Heaven",           "dep": "From Her to Eternity (Reed path)",      "check_id": "sa_ep1_32", "tags": ["pl-main", "ending", "reed"]},
-      # Songbird path
-      {"id": "q305_border_crossing","name": "Leave in Silence",                 "dep": "Birds with Broken Wings: Songbird path","check_id": "sa_ep1_32", "tags": ["pl-main", "songbird"]},
-      {"id": "q306_devils_bargain", "name": "The Killing Moon",                 "dep": "after Leave in Silence (Songbird path)","check_id": "sa_ep1_32", "tags": ["pl-main", "ending", "songbird"]},
-      {"id": "q306_somi_epilogue",  "name": "Unfinished Sympathy",              "dep": "after The Killing Moon (Songbird path)","check_id": "sa_ep1_32", "tags": ["pl-main", "ending", "songbird"]},
-      # Shared epilogue (one per playthrough)
-      {"id": "q307_tomorrow",       "name": "Things Done Changed",              "dep": "The Killing Moon path",                 "check_id": "sa_ep1_32", "tags": ["pl-main", "ending"]},
-      {"id": "q307_before_tomorrow","name": "Who Wants to Live Forever",        "dep": "From Her to Eternity path",             "check_id": "sa_ep1_32", "tags": ["pl-main", "ending"]},
+      # Reed path — check q305_done fact (set when chain completes)
+      {"id": "q305_prison_convoy",  "name": "Black Steel in the Hour of Chaos", "dep": "Birds with Broken Wings: Reed path",    "check_fact": "q305_done", "tags": ["pl-main", "reed"]},
+      {"id": "q305_bunker",         "name": "Somewhat Damaged",                 "dep": "after Black Steel (Reed path)",         "check_fact": "q305_done", "tags": ["pl-main", "reed"]},
+      {"id": "q305_postcontent",    "name": "This Corrosion",                   "dep": "after Somewhat Damaged (Reed path)",    "check_fact": "q305_done", "tags": ["pl-main", "reed"]},
+      {"id": "q305_reed_epilogue",  "name": "Four Score and Seven",             "dep": "Reed path finale",                      "check_fact": "q305_done", "tags": ["pl-main", "ending", "reed"]},
+      {"id": "q306_postcontent",    "name": "From Her to Eternity",             "dep": "Four Score and Seven (Reed path)",      "check_fact": "q306_done", "tags": ["pl-main", "ending", "reed"]},
+      {"id": "q306_reed_epilogue",  "name": "Through Pain to Heaven",           "dep": "From Her to Eternity (Reed path)",      "check_fact": "q306_done", "tags": ["pl-main", "ending", "reed"]},
+      # Songbird path — check q306_done fact
+      {"id": "q305_border_crossing","name": "Leave in Silence",                 "dep": "Birds with Broken Wings: Songbird path","check_fact": "q305_done", "tags": ["pl-main", "songbird"]},
+      {"id": "q306_devils_bargain", "name": "The Killing Moon",                 "dep": "after Leave in Silence (Songbird path)","check_fact": "q306_done", "tags": ["pl-main", "ending", "songbird"]},
+      {"id": "q306_somi_epilogue",  "name": "Unfinished Sympathy",              "dep": "after The Killing Moon (Songbird path)","check_fact": "q306_done", "tags": ["pl-main", "ending", "songbird"]},
+      # Shared epilogue — check q307_done fact
+      {"id": "q307_tomorrow",       "name": "Things Done Changed",              "dep": "The Killing Moon path",                 "check_fact": "q307_done", "tags": ["pl-main", "ending"]},
+      {"id": "q307_before_tomorrow","name": "Who Wants to Live Forever",        "dep": "From Her to Eternity path",             "check_fact": "q307_done", "tags": ["pl-main", "ending"]},
       # PL minor side quests
       {"id": "mq303",  "name": "Dazed and Confused",                              "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq305",  "name": "Shot by Both Sides",                              "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
@@ -621,6 +623,113 @@ def fmt_time(seconds: float) -> str:
   return f"{h}h {m:02d}m"
 
 
+# ── FACTSDB PARSING (sav.dat via CyberpunkPythonHacks) ─────────────────────────
+
+def _fnv1a32(s: str) -> int:
+  """FNV-1a 32-bit hash used by CP2077 for fact names."""
+  h = 0x811C9DC5
+  for c in s.encode():
+    h = ((h ^ c) * 0x01000193) & 0xFFFFFFFF
+  return h
+
+
+def _read_cp_packedint(data: bytes, off: int) -> tuple[int, int]:
+  """Read CP2077 custom packed int (NOT standard LEB128). Returns (value, new_off)."""
+  a = data[off]; off += 1
+  val = a & 0x3F
+  sign = bool(a & 0x80)
+  if a & 0x40:
+    a = data[off]; off += 1
+    val |= (a & 0x7F) << 6
+    if a & 0x80:
+      a = data[off]; off += 1
+      val |= (a & 0x7F) << 13
+      if a & 0x80:
+        a = data[off]; off += 1
+        val |= (a & 0x7F) << 20
+        if a & 0x80:
+          a = data[off]; off += 1
+          val |= (a & 0xFF) << 27
+  return (-val if sign else val), off
+
+
+def _wanted_fact_hashes() -> dict[int, str]:
+  """FNV1a32 hash → fact name for every fact we could need from FactsDB."""
+  names: set[str] = set()
+  for cat in QUEST_CATALOG:
+    for q in cat["quests"]:
+      qid = q["id"]
+      cid = q.get("check_id", qid)
+      if q.get("check_fact"):
+        names.add(q["check_fact"])
+      if not qid.startswith("_weapon_"):
+        for n in (qid, cid,
+                  f"{qid}_done", f"{cid}_done",
+                  f"{qid}_finished", f"{cid}_finished",
+                  f"{qid}_active", f"{cid}_active"):
+          names.add(n)
+  # facts used for choices / display
+  names.update([
+    "sq030_judy_lover", "sq012_fact_warn_river", "q003_royce_dead",
+    "q103_helped_panam", "q110_voodoo_queen_dead", "q003_meredith_won",
+    "ep1_side_content",
+  ])
+  return {_fnv1a32(n): n for n in names}
+
+
+def _parse_facts_db(sav_path: Path) -> dict[str, int] | None:
+  """
+  Parse FactsDB from sav.dat using CyberpunkPythonHacks.
+  Returns {fact_name: int_value} for all recognized fact names, or None if
+  CyberpunkPythonHacks is not available or the parse fails.
+
+  Binary layout per FactsTable node (after 4-byte node-index prefix):
+    [cp_packedint]   count N
+    [uint32 × N]     fact name hashes  (FNV1a32, sorted ascending)
+    [uint32 × N]     fact values       (parallel array)
+  """
+  hack_dir = Path(__file__).parent / "tools" / "CyberpunkPythonHacks"
+  if not hack_dir.exists():
+    return None
+  if str(hack_dir) not in sys.path:
+    sys.path.insert(0, str(hack_dir))
+  try:
+    import cp2077chunk
+    cp2077chunk.DataChunkTableChunk.VALID_CAPACITY = (0x100, 0x200, 0x400)
+    from cp2077save import SaveFile
+  except ImportError:
+    return None
+  try:
+    sf = SaveFile(str(sav_path.parent))
+  except Exception:
+    return None
+
+  wanted = _wanted_fact_hashes()
+  result: dict[str, int] = {}
+
+  for node in sf.nodes_info:
+    try:
+      if node.name.decode("ascii") != "FactsTable":
+        continue
+    except Exception:
+      continue
+    data = bytes(sf.data[node.offset : node.offset + node.size])
+    off  = 4  # skip 4-byte node-index prefix added by CyberpunkPythonHacks
+    try:
+      count, off = _read_cp_packedint(data, off)
+      if count <= 0 or off + count * 8 > len(data):
+        continue
+      hashes = struct.unpack_from(f"<{count}I", data, off)
+      values = struct.unpack_from(f"<{count}I", data, off + count * 4)
+      for h, v in zip(hashes, values):
+        if h in wanted:
+          result[wanted[h]] = v
+    except Exception:
+      continue
+
+  return result or None
+
+
 def _save_timestamp(path: Path) -> datetime:
   """Return parsed save datetime for sorting. Returns datetime.min on failure."""
   try:
@@ -638,19 +747,46 @@ def load_latest_save(save_name: str | None) -> dict:
     sys.exit(f"[ERR] No metadata JSON found under {SAVE_ROOT}")
   latest = max(candidates, key=_save_timestamp)
   print(f"[i] Reading save: {latest}")
-  return json.loads(latest.read_text(encoding="utf-8"))
+  raw = json.loads(latest.read_text(encoding="utf-8"))
+  raw["_sav_path"] = str(latest.parent / "sav.dat")
+  return raw
 
 
 def parse_save(raw: dict) -> dict:
   m = raw["Data"]["metadata"]
 
-  finished: set[str] = set(m.get("finishedQuests", "").split())
+  # ── Primary: parse FactsDB from sav.dat ───────────────────────────────────
+  sav_path   = Path(raw.get("_sav_path", ""))
+  sav_facts  = _parse_facts_db(sav_path) if sav_path.exists() else None
 
+  finished:     set[str] = set()
   active_facts: set[str] = set()
-  for entry in m.get("facts", []):
-    key, _, val = entry.partition("=")
-    if val.strip() == "1":
-      active_facts.add(key.strip())
+
+  if sav_facts:
+    # Derive finished set from _done / _finished facts
+    for name, val in sav_facts.items():
+      if val:
+        active_facts.add(name)
+        if name.endswith("_done"):
+          finished.add(name[:-5])
+        elif name.endswith("_finished"):
+          finished.add(name[:-9])
+    # Supplement with metadata finishedQuests for IDs that lack FactsDB facts
+    # (some NCPD crimes and PL milestones only appear there)
+    meta_finished = set(m.get("finishedQuests", "").split())
+    extra = meta_finished - finished
+    if extra:
+      finished.update(extra)
+      print(f"[i] FactsDB: {len(sav_facts)} facts resolved; +{len(extra)} IDs from finishedQuests fallback")
+    else:
+      print(f"[i] FactsDB: {len(sav_facts)} facts resolved")
+  else:
+    # Fallback: metadata.json only
+    finished = set(m.get("finishedQuests", "").split())
+    for entry in m.get("facts", []):
+      key, _, val = entry.partition("=")
+      if val.strip() == "1":
+        active_facts.add(key.strip())
 
   return {
     "name":        m.get("name", "?"),
@@ -698,11 +834,12 @@ def _load_tracker_weapons() -> dict[str, bool]:
 _TRACKER_WEAPONS: dict[str, bool] = _load_tracker_weapons()
 
 
-def quest_done(quest_id: str, finished: set[str], facts: set[str]) -> bool:
-  # _weapon_* status comes from tracker_weapons.json (written by read_inventory.py)
-  # If that file doesn't exist, defaults to False (manual localStorage tracking)
+def quest_done(quest_id: str, finished: set[str], facts: set[str],
+               check_fact: str | None = None) -> bool:
   if quest_id.startswith("_weapon_"):
     return _TRACKER_WEAPONS.get(quest_id, False)
+  if check_fact:
+    return check_fact in facts
   return quest_id in finished
 
 
@@ -715,9 +852,9 @@ def build_catalog_data(save: dict) -> list[dict]:
   for cat_idx, cat in enumerate(QUEST_CATALOG):
     quests_out = []
     for q_idx, q in enumerate(cat["quests"]):
-      # check_id allows phase-split quests to track completion via their parent ID
-      check_id = q.get("check_id", q["id"])
-      done = quest_done(check_id, finished, facts)
+      check_id   = q.get("check_id", q["id"])
+      check_fact = q.get("check_fact")
+      done = quest_done(check_id, finished, facts, check_fact)
       catalogued_ids.add(check_id)
       quests_out.append({
         "id":      q["id"],
@@ -927,12 +1064,33 @@ input[type=search]::placeholder{color:var(--muted)}
 .btn-cancel{background:#1a0a0a;border:1px solid #3a1a1a;color:#a66;transition:background .15s}
 .btn-cancel:hover{background:#2a0d0d}
 .copy-confirm{font-size:10px;color:#6f6;opacity:0;transition:opacity .3s;align-self:center}
+
+/* ── report queue button in header ── */
+.report-queue-btn{font-family:inherit;font-size:10px;letter-spacing:.5px;text-transform:uppercase;font-weight:700;color:#fa3;background:#1a0f00;border:1px solid #4a3a00;border-radius:4px;padding:4px 10px;cursor:pointer;margin-left:auto;transition:background .15s}
+.report-queue-btn:hover{background:#2a1a00;border-color:#8a6a00}
+.report-badge{display:inline-block;background:#e63;color:#fff;font-size:9px;padding:0 5px;border-radius:8px;margin-left:4px;font-weight:700;vertical-align:middle}
+
+/* ── queue panel ── */
+#queuePanel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center}
+#queuePanel.open{display:flex}
+.queue-box{width:560px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column}
+#queueList{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;min-height:40px;max-height:380px;padding-right:4px}
+.queue-item{background:#06060f;border:1px solid #1a1a2a;border-radius:4px;padding:10px 12px}
+.queue-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.queue-item-name{font-size:12px;font-weight:700;color:var(--yellow)}
+.queue-remove{background:none;border:none;color:#833;cursor:pointer;font-size:13px;padding:0 2px;line-height:1}
+.queue-remove:hover{color:#f66}
+.queue-item-meta{font-size:10px;color:var(--muted);margin-bottom:4px}
+.queue-item-issue{font-size:11px;color:var(--text)}
 </style>
 </head>
 <body>
 <header>
   <h1>CYBERPUNK <span>2077</span> · 100% TRACKER</h1>
   <div class="save-badge" id="saveBadge"></div>
+  <button class="report-queue-btn" id="reportQueueBtn" onclick="openQueue()" style="display:none" title="View queued reports">
+    ⚑ Reports <span class="report-badge" id="reportBadge"></span>
+  </button>
 </header>
 
 <div class="layout">
@@ -1229,6 +1387,25 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 // ── Issue reporter ─────────────────────────────────────────────────────────
+const QUEUE_KEY = 'cp2077_reports';
+
+function getQueue() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveQueue(q) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+  updateQueueBadge();
+}
+function updateQueueBadge() {
+  const n = getQueue().length;
+  const badge = document.getElementById('reportBadge');
+  const btn   = document.getElementById('reportQueueBtn');
+  badge.textContent = n;
+  badge.style.display = n ? 'inline' : 'none';
+  btn.style.display   = n ? 'inline-flex' : 'none';
+}
+
 function reportIssue(id, cat, name, done, ev) {
   ev.stopPropagation();
   const save = (DATA.save && DATA.save.name) || '?';
@@ -1236,34 +1413,90 @@ function reportIssue(id, cat, name, done, ev) {
   document.getElementById('rMeta').textContent =
     `Quest: ${name}\\nID: ${id}\\nCategory: ${cat}\\nStatus: ${status}\\nSave: ${save}`;
   document.getElementById('rDesc').value = '';
-  document.getElementById('rCopyConfirm').style.opacity = '0';
+  document.getElementById('rAddConfirm').style.opacity = '0';
   document.getElementById('reportModal').classList.add('open');
   document.getElementById('rDesc').focus();
-  // store for copy
   document.getElementById('reportModal')._data = {id, cat, name, done, save, status};
 }
 function closeReport() {
   document.getElementById('reportModal').classList.remove('open');
 }
-function copyReport() {
-  const d = document.getElementById('reportModal')._data;
+function addToQueue() {
+  const d    = document.getElementById('reportModal')._data;
   const desc = document.getElementById('rDesc').value.trim() || '(no description)';
-  const text = [
-    '[BUG REPORT] CP2077 Tracker',
-    `Quest:    ${d.name}`,
-    `ID:       ${d.id}`,
-    `Category: ${d.cat}`,
-    `Status:   ${d.status}`,
-    `Save:     ${d.save}`,
-    `Issue:    ${desc}`,
-  ].join('\\n');
-  navigator.clipboard.writeText(text).then(()=>{
-    const el = document.getElementById('rCopyConfirm');
+  const q    = getQueue();
+  // dedupe by id+desc
+  if (!q.find(r => r.id === d.id && r.desc === desc)) {
+    q.push({id: d.id, cat: d.cat, name: d.name, status: d.status, save: d.save, desc, ts: Date.now()});
+    saveQueue(q);
+  }
+  const el = document.getElementById('rAddConfirm');
+  el.style.opacity = '1';
+  setTimeout(()=>{ el.style.opacity='0'; closeReport(); }, 900);
+}
+
+// Queue panel
+function openQueue() {
+  renderQueuePanel();
+  document.getElementById('queuePanel').classList.add('open');
+}
+function closeQueue() {
+  document.getElementById('queuePanel').classList.remove('open');
+}
+function removeFromQueue(idx) {
+  const q = getQueue();
+  q.splice(idx, 1);
+  saveQueue(q);
+  renderQueuePanel();
+}
+function renderQueuePanel() {
+  const q = getQueue();
+  document.getElementById('qCount').textContent = q.length ? `(${q.length})` : '';
+  const list = document.getElementById('queueList');
+  if (!q.length) {
+    list.innerHTML = '<p style="color:#888;font-size:12px;margin:0">No reports queued.</p>';
+    return;
+  }
+  list.innerHTML = q.map((r, i) => `
+    <div class="queue-item">
+      <div class="queue-item-header">
+        <span class="queue-item-name">${r.name}</span>
+        <button class="queue-remove" onclick="removeFromQueue(${i})" title="Remove">✕</button>
+      </div>
+      <div class="queue-item-meta">${r.id} · ${r.cat} · ${r.status}</div>
+      <div class="queue-item-issue">${r.desc}</div>
+    </div>`).join('');
+}
+function copyAllReports() {
+  const q = getQueue();
+  if (!q.length) return;
+  const save = q[0].save;
+  const lines = [
+    `[CP2077 TRACKER BUG REPORTS] — ${q.length} issue${q.length>1?'s':''}`,
+    `Save: ${save}`,
+    '',
+    ...q.map((r, i) => [
+      `${i+1}. Quest: ${r.name}`,
+      `   ID: ${r.id}`,
+      `   Category: ${r.cat}`,
+      `   Status: ${r.status}`,
+      `   Issue: ${r.desc}`,
+    ].join('\\n')),
+  ];
+  navigator.clipboard.writeText(lines.join('\\n')).then(()=>{
+    const el = document.getElementById('qCopyConfirm');
     el.style.opacity = '1';
-    setTimeout(()=>{ el.style.opacity='0'; closeReport(); }, 1200);
+    setTimeout(()=>{ el.style.opacity='0'; saveQueue([]); renderQueuePanel(); }, 1400);
   });
 }
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeReport(); });
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    closeReport();
+    closeQueue();
+  }
+});
+document.addEventListener('DOMContentLoaded', updateQueueBadge);
 </script>
 
 <div id="reportModal" onclick="if(event.target===this)closeReport()">
@@ -1274,9 +1507,21 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeReport(); })
     <label>WHAT'S WRONG?</label>
     <textarea id="rDesc" placeholder="e.g. Shows as done but I haven't done it / wrong name / should be split into 2 entries / missing entry..."></textarea>
     <div class="report-actions">
-      <span class="copy-confirm" id="rCopyConfirm">Copied!</span>
+      <span class="copy-confirm" id="rAddConfirm">Added!</span>
       <button class="btn-cancel" onclick="closeReport()">Cancel</button>
-      <button class="btn-copy" onclick="copyReport()">Copy Report</button>
+      <button class="btn-copy" onclick="addToQueue()">Add to Queue</button>
+    </div>
+  </div>
+</div>
+
+<div id="queuePanel" onclick="if(event.target===this)closeQueue()">
+  <div class="report-box queue-box">
+    <h3>QUEUED REPORTS <span id="qCount"></span></h3>
+    <div id="queueList"></div>
+    <div class="report-actions" style="margin-top:12px">
+      <span class="copy-confirm" id="qCopyConfirm">Copied &amp; cleared!</span>
+      <button class="btn-cancel" onclick="closeQueue()">Close</button>
+      <button class="btn-copy" onclick="copyAllReports()">Copy All &amp; Clear</button>
     </div>
   </div>
 </div>
