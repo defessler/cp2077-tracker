@@ -1,0 +1,17 @@
+# Generated output (contains personal save data)
+tracker_dashboard.html
+tracker_weapons.json
+
+# Third-party tools (download separately — see README)
+tools/
+
+# Google OAuth credentials
+oauth_client.json
+token.json
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Claude Code
+.claude/
