@@ -740,6 +740,49 @@ def _save_timestamp(path: Path) -> datetime:
     return datetime.min
 
 
+_TS_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+def _build_completion_timestamps() -> dict[str, str]:
+  """
+  Scan all save metadata files in chronological order.
+  Returns {quest_id_or_fact: "DD Mon · HH:MM"} for the earliest save where
+  each ID first appeared in finishedQuests (or check_fact in the facts array).
+  """
+  candidates = list(SAVE_ROOT.glob("*/metadata.*.json"))
+  if not candidates:
+    return {}
+
+  # Collect check_fact names we track so we can scan for them in facts arrays
+  check_facts: set[str] = set()
+  for cat in QUEST_CATALOG:
+    for q in cat["quests"]:
+      if q.get("check_fact"):
+        check_facts.add(q["check_fact"])
+
+  timestamped = [(t, p) for p in candidates if (t := _save_timestamp(p)) != datetime.min]
+  timestamped.sort(key=lambda x: x[0])
+
+  first_seen: dict[str, datetime] = {}
+  for ts, p in timestamped:
+    try:
+      m = json.loads(p.read_text(encoding="utf-8"))["Data"]["metadata"]
+      for qid in m.get("finishedQuests", "").split():
+        if qid and qid not in first_seen:
+          first_seen[qid] = ts
+      for entry in m.get("facts", []):
+        key, _, val = entry.partition("=")
+        key = key.strip()
+        if val.strip() == "1" and key in check_facts and key not in first_seen:
+          first_seen[key] = ts
+    except Exception:
+      continue
+
+  return {
+    k: f"{v.day} {_TS_MONTHS[v.month-1]} · {v.hour:02d}:{v.minute:02d}"
+    for k, v in first_seen.items()
+  }
+
+
 def load_latest_save(save_name: str | None) -> dict:
   pattern    = f"{save_name}/metadata.*.json" if save_name else "*/metadata.*.json"
   candidates = list(SAVE_ROOT.glob(pattern))
@@ -808,6 +851,7 @@ def parse_save(raw: dict) -> dict:
     },
     "finished_quests": sorted(finished),
     "active_facts":    sorted(active_facts),
+    "completed_at":    _build_completion_timestamps(),
     "choices": {
       "Romanced Judy":    "sq030_judy_lover"       in active_facts,
       "River — saved":    "sq012_fact_warn_river"  in active_facts,
@@ -844,8 +888,9 @@ def quest_done(quest_id: str, finished: set[str], facts: set[str],
 
 
 def build_catalog_data(save: dict) -> list[dict]:
-  finished = set(save["finished_quests"])
-  facts    = set(save["active_facts"])
+  finished     = set(save["finished_quests"])
+  facts        = set(save["active_facts"])
+  completed_at = save.get("completed_at", {})
   catalogued_ids: set[str] = set()
   result = []
 
@@ -856,16 +901,18 @@ def build_catalog_data(save: dict) -> list[dict]:
       check_fact = q.get("check_fact")
       done = quest_done(check_id, finished, facts, check_fact)
       catalogued_ids.add(check_id)
+      ts_key = check_fact if check_fact else check_id
       quests_out.append({
-        "id":      q["id"],
-        "name":    q["name"],
-        "dep":     q.get("dep", ""),
-        "wiki":    q.get("wiki"),  # None=auto, False=suppress, str=custom slug
-        "tags":    q.get("tags", []) + cat.get("tags", []),
-        "done":    done,
-        "seq":     q_idx,
-        "cat_seq": cat_idx * 1000,
-        "manual":  q["id"].startswith("_weapon_"),
+        "id":           q["id"],
+        "name":         q["name"],
+        "dep":          q.get("dep", ""),
+        "wiki":         q.get("wiki"),  # None=auto, False=suppress, str=custom slug
+        "tags":         q.get("tags", []) + cat.get("tags", []),
+        "done":         done,
+        "seq":          q_idx,
+        "cat_seq":      cat_idx * 1000,
+        "manual":       q["id"].startswith("_weapon_"),
+        "completed_at": completed_at.get(ts_key, ""),
       })
     total     = len(quests_out)
     completed = sum(1 for q in quests_out if q["done"])
@@ -1004,6 +1051,7 @@ input[type=search]::placeholder{color:var(--muted)}
 .q-todo .q-name{color:var(--muted)}
 .q-dep{font-size:9px;color:#3a6a8a;letter-spacing:.3px;margin-left:6px;opacity:.8}
 .q-id{font-size:10px;color:#445;margin-top:1px;font-family:'Courier New',monospace}
+.q-ts{font-size:9px;color:#2a5a3a;margin-left:8px;letter-spacing:.3px;opacity:.8}
 .q-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
 .q-tag{font-size:9px;padding:1px 5px;border-radius:1px;border:1px solid;cursor:pointer;letter-spacing:.5px;white-space:nowrap}
 .q-tag:hover{opacity:.8}
@@ -1304,7 +1352,7 @@ function renderQuestPanels() {
           <span class="q-check">${q.done?'✓':'○'}</span>
           <div class="q-info">
             <div class="q-name">${q.name}${q.dep?`<span class="q-dep">▸ ${q.dep}</span>`:''}${wikiUrl?` <a class="q-wiki" href="${wikiUrl}" target="_blank" title="Open on Cyberpunk wiki" onclick="event.stopPropagation()">WIKI ↗</a>`:''}<button class="q-report" onclick="reportIssue('${q.id}','${cat.label.replace(/'/g,"\\'")}','${q.name.replace(/'/g,"\\'")}',${q.done},event)" title="Report issue">⚑ REPORT</button></div>
-            <div class="q-id">${q.id}</div>
+            <div class="q-id">${q.id}${q.done&&q.completed_at?`<span class="q-ts">${q.completed_at}</span>`:''}</div>
             <div class="q-tags">${dedup.map(t=>`<span class="q-tag t-${t}" data-tag="${t}">${t}</span>`).join('')}</div>
           </div>
         </div>`;
