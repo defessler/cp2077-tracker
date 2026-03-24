@@ -193,10 +193,9 @@ QUEST_CATALOG = [
     "quests": [
       {"id": "wst_ep1_04",    "name": "Addicted to Chaos",              "tags": ["dogtown", "pl-side"]},
       {"id": "wst_ep1_05",    "name": "Go Your Own Way",                "tags": ["dogtown", "pl-side"]},
+      {"id": "wst_ep1_09",    "name": "One Way or Another",             "tags": ["dogtown", "pl-side"]},
       {"id": "wst_ep1_11",    "name": "New Person, Same Old Mistakes",  "tags": ["dogtown", "pl-side"]},
       {"id": "wst_ep1_21",    "name": "Water Runs Dry",                 "tags": ["dogtown", "pl-side"]},
-      {"id": "we_ep1_01",     "name": "Balls to the Wall",              "tags": ["dogtown", "pl-side"]},
-      {"id": "we_ep1_05",     "name": "Run This Town",                  "tags": ["dogtown", "pl-side"]},
       {"id": "sa_ep1_courier","name": "Courier Quests",                 "tags": ["dogtown", "pl-side"]},
       {"id": "cbj_ep1_02",    "name": "Bounty Job #2",                  "tags": ["dogtown", "bounty", "pl-side"]},
       {"id": "cbj_ep1_03",    "name": "Bounty Job #3",                  "tags": ["dogtown", "bounty", "pl-side"]},
@@ -991,7 +990,9 @@ def build_catalog_data(save: dict) -> list[dict]:
   PARENT_FLAGS = {"q000", "q001", "q306"}  # q306 tracked via check_fact on sub-quests
   # Dogtown airdrop sandbox activities — unnamed loot-crate events, not trackable quests
   AIRDROP_IDS  = {"sa_ep1_31","sa_ep1_32","sa_ep1_33","sa_ep1_34","sa_ep1_35","sa_ep1_37","sa_ep1_38","sa_ep1_39","sa_ep1_303","sa_ep1_306"}
-  SUPPRESS     = PARENT_FLAGS | AIRDROP_IDS
+  # Duplicate IDs: we_ep1_01/05 are secondary IDs for mq301/mq304 (same quest, two IDs in save)
+  DUPE_IDS     = {"we_ep1_01", "we_ep1_05"}
+  SUPPRESS     = PARENT_FLAGS | AIRDROP_IDS | DUPE_IDS
   # Uncatalogued quests from save
   extra = sorted(q for q in finished if q not in catalogued_ids and not q.startswith("_") and q not in SUPPRESS)
   if extra:
@@ -1080,9 +1081,12 @@ input[type=search]::placeholder{color:var(--muted)}
 
 /* ── category cards grid ── */
 .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:16px}
-.cat-card{background:var(--panel);border:1px solid var(--border);padding:10px 12px;cursor:pointer;transition:border-color .15s;border-radius:2px}
+.cat-card{background:var(--panel);border:1px solid var(--border);padding:10px 12px;cursor:pointer;transition:border-color .15s;border-radius:2px;position:relative}
 .cat-card:hover,.cat-card.active{border-color:var(--cyan)}
 .cat-card.active{background:#001a22}
+.cat-card.cat-complete{border-color:#1a3d1a}
+.cat-card.cat-complete .mini-fill{box-shadow:0 0 4px currentColor}
+.cat-complete-badge{position:absolute;top:6px;right:8px;font-size:9px;color:#3a8a3a;letter-spacing:.5px;font-weight:bold}
 .cat-card-head{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .cat-icon{font-size:14px}
 .cat-label{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:bold;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1093,6 +1097,7 @@ input[type=search]::placeholder{color:var(--muted)}
 
 /* ── quest list ── */
 .quest-panel{background:var(--panel);border:1px solid var(--border);border-radius:2px;margin-bottom:16px}
+.panel-complete{border-color:#1a3d1a}
 .quest-panel-head{padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
 .quest-panel-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:bold}
 .quest-panel-sub{font-size:10px;color:var(--muted);margin-left:auto;letter-spacing:1px}
@@ -1317,7 +1322,8 @@ function renderCards() {
       <div class="mini-bar"><div class="mini-fill" style="width:${Math.round(100*done/total)}%;background:var(--cyan)"></div></div>
     </div>
     ${DATA.catalog.map(c=>`
-    <div class="cat-card${activeCategory===c.id?' active':''}" data-cat="${c.id}">
+    <div class="cat-card${activeCategory===c.id?' active':''}${c.pct===100?' cat-complete':''}" data-cat="${c.id}">
+      ${c.pct===100?'<span class="cat-complete-badge">✓ DONE</span>':''}
       <div class="cat-card-head">
         <span class="cat-icon" style="color:${c.color}">${c.icon}</span>
         <span class="cat-label" style="color:${c.color}">${c.label}</span>
@@ -1386,11 +1392,11 @@ function renderQuestPanels() {
   const cats = activeCategory==='all' ? DATA.catalog : DATA.catalog.filter(c=>c.id===activeCategory);
   const panels = document.getElementById('questPanels');
   panels.innerHTML = cats.map(cat=>`
-    <div class="quest-panel" data-panel="${cat.id}">
+    <div class="quest-panel${cat.pct===100?' panel-complete':''}" data-panel="${cat.id}">
       <div class="quest-panel-head" style="border-left:3px solid ${cat.color}">
         <span style="color:${cat.color}">${cat.icon}</span>
         <span class="quest-panel-title" style="color:${cat.color}">${cat.label}</span>
-        <span class="quest-panel-sub">${cat.completed}/${cat.total} · ${cat.pct}%</span>
+        <span class="quest-panel-sub">${cat.completed}/${cat.total} · ${cat.pct}%${cat.pct===100?' <span style="color:#3a8a3a;margin-left:6px">✓ COMPLETE</span>':''}</span>
       </div>
       ${cat.note ? `<div class="q-panel-note">${cat.note}</div>` : ''}
       ${sortQuests(cat.quests).map(q=>{
