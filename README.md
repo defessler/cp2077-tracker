@@ -36,6 +36,29 @@ Saves are read from `%USERPROFILE%\Saved Games\CD Projekt Red\Cyberpunk 2077` au
 
 ---
 
+## Adding Another Game
+
+The engine (`tracker_engine.py`) is game-agnostic. To track a new game:
+
+1. **`mygame_catalog.py`** — define `QUEST_CATALOG`, `LIFE_PATH_TAG`, `SUPPRESS_IDS`
+2. **`mygame_save.py`** — implement `load_latest_save()` and `parse_save()` returning a SaveData dict with: `finished_quests`, `active_facts`, `quest_rewards`, `completed_at`, `manual_results`, `choices`, plus display fields (`name`, `level`, `play_time`, etc.)
+3. **`mygame_local.py`** — thin entry point, ~40 lines (see `tracker_local.py`)
+
+The SaveData contract is documented in the docstring at the top of `tracker_engine.py`.
+
+---
+
+## Credits
+
+- Save parsing: [CyberpunkPythonHacks](https://github.com/farzher/CyberpunkPythonHacks) by Ali Farzanrad
+- Quest IDs: [CDPR Modding Wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/)
+- Wiki links: [Cyberpunk 2077 Wiki (Fandom)](https://cyberpunk.fandom.com/)
+
+---
+
+<details>
+<summary>⚠️ Spoilers — CP2077 save format, quest mechanics, and discovery notes</summary>
+
 ## How CP2077 Saves Work
 
 Each save slot contains two files:
@@ -124,22 +147,4 @@ When the dashboard shows an **Uncatalogued** category, those IDs are in your sav
 
 Use the **⚑ Report** button on any quest row to queue a formatted bug report.
 
----
-
-## Adding Another Game
-
-The engine (`tracker_engine.py`) is game-agnostic. To track a new game:
-
-1. **`mygame_catalog.py`** — define `QUEST_CATALOG`, `LIFE_PATH_TAG`, `SUPPRESS_IDS`
-2. **`mygame_save.py`** — implement `load_latest_save()` and `parse_save()` returning a SaveData dict with: `finished_quests`, `active_facts`, `quest_rewards`, `completed_at`, `manual_results`, `choices`, plus display fields (`name`, `level`, `play_time`, etc.)
-3. **`mygame_local.py`** — thin entry point, ~40 lines (see `tracker_local.py`)
-
-The SaveData contract is documented in the docstring at the top of `tracker_engine.py`.
-
----
-
-## Credits
-
-- Save parsing: [CyberpunkPythonHacks](https://github.com/farzher/CyberpunkPythonHacks) by Ali Farzanrad
-- Quest IDs: [CDPR Modding Wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/)
-- Wiki links: [Cyberpunk 2077 Wiki (Fandom)](https://cyberpunk.fandom.com/)
+</details>

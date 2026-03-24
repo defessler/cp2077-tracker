@@ -149,15 +149,15 @@ QUEST_CATALOG = [
       {"id": "q305_border_crossing","name": "Leave in Silence",                 "dep": "Birds with Broken Wings: Songbird path","check_fact": "q306_done", "tags": ["pl-main", "songbird"]},
       {"id": "q306_devils_bargain", "name": "The Killing Moon",                 "dep": "after Leave in Silence (Songbird path)","check_fact": "q306_done", "tags": ["pl-main", "ending", "songbird"]},
       {"id": "q306_somi_epilogue",  "name": "Unfinished Sympathy",              "dep": "after The Killing Moon (Songbird path)","check_fact": "q306_done", "tags": ["pl-main", "ending", "songbird"]},
-      # Shared epilogue — check q307_done fact (Songbird listed first)
-      {"id": "q307_before_tomorrow","name": "Who Wants to Live Forever",        "dep": "Songbird path epilogue (after The Killing Moon)",        "check_fact": "q307_done", "tags": ["pl-main", "ending", "songbird"]},
-      {"id": "q307_tomorrow",       "name": "Things Done Changed",              "dep": "Reed path epilogue (after From Her to Eternity)",        "check_fact": "q307_done", "tags": ["pl-main", "ending", "reed"]},
-      # PL minor side quests
+      # PL minor side quests (available during PL, before epilogue)
       {"id": "mq301",  "name": "Balls to the Wall",                               "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq303",  "name": "Dazed and Confused",                              "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq304",  "name": "Run This Town",                                   "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq305",  "name": "Shot by Both Sides",                              "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq306",  "name": "No Easy Way Out",                                 "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
+      # Shared epilogue — check q307_done fact (Songbird listed first)
+      {"id": "q307_before_tomorrow","name": "Who Wants to Live Forever",        "dep": "Songbird path epilogue (after The Killing Moon)",        "check_fact": "q307_done", "tags": ["pl-main", "ending", "songbird"]},
+      {"id": "q307_tomorrow",       "name": "Things Done Changed",              "dep": "Reed path epilogue (after From Her to Eternity)",        "check_fact": "q307_done", "tags": ["pl-main", "ending", "reed"]},
     ],
   },
 
