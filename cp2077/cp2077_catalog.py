@@ -247,7 +247,7 @@ QUEST_CATALOG = [
   # ── GIGS — WATSON ─────────────────────────────────────────────────────────────
   {
     "id": "gigs_watson", "label": "Gigs — Watson", "color": "#39d353", "icon": "◆",
-    "show_wiki": False,
+    "wiki_prefix": "Gig:_",
     "tags": ["gig", "watson"],
     "quests": [
       {"id": "sts_wat_kab_01",  "name": "Concrete Cage Trap",           "tags": ["kabuki"]},
@@ -279,7 +279,7 @@ QUEST_CATALOG = [
   # ── GIGS — WESTBROOK ──────────────────────────────────────────────────────────
   {
     "id": "gigs_westbrook", "label": "Gigs — Westbrook", "color": "#39d353", "icon": "◆",
-    "show_wiki": False,
+    "wiki_prefix": "Gig:_",
     "tags": ["gig", "westbrook"],
     "quests": [
       {"id": "sts_wbr_hil_01",  "name": "Until Death Do Us Part",       "tags": ["north-oak"]},
@@ -297,7 +297,7 @@ QUEST_CATALOG = [
   # ── GIGS — CITY CENTER ────────────────────────────────────────────────────────
   {
     "id": "gigs_city_center", "label": "Gigs — City Center", "color": "#39d353", "icon": "◆",
-    "show_wiki": False,
+    "wiki_prefix": "Gig:_",
     "tags": ["gig", "city-center"],
     "quests": [
       {"id": "sts_cct_cpz_01",  "name": "Serial Suicide",               "tags": ["corpo-plaza"]},
@@ -311,7 +311,7 @@ QUEST_CATALOG = [
   # ── GIGS — HEYWOOD ────────────────────────────────────────────────────────────
   {
     "id": "gigs_heywood", "label": "Gigs — Heywood", "color": "#39d353", "icon": "◆",
-    "show_wiki": False,
+    "wiki_prefix": "Gig:_",
     "tags": ["gig", "heywood"],
     "quests": [
       {"id": "sts_hey_gle_01",  "name": "Eye for an Eye",               "tags": ["the-glen"]},
@@ -333,7 +333,7 @@ QUEST_CATALOG = [
   # ── GIGS — SANTO DOMINGO ──────────────────────────────────────────────────────
   {
     "id": "gigs_santo_domingo", "label": "Gigs — Santo Domingo", "color": "#39d353", "icon": "◆",
-    "show_wiki": False,
+    "wiki_prefix": "Gig:_",
     "tags": ["gig", "santo-domingo"],
     "quests": [
       {"id": "sts_std_arr_01",  "name": "Serious Side Effects",         "tags": ["arroyo"]},
@@ -354,7 +354,7 @@ QUEST_CATALOG = [
   # ── GIGS — BADLANDS & PACIFICA ────────────────────────────────────────────────
   {
     "id": "gigs_outer", "label": "Gigs — Badlands & Pacifica", "color": "#39d353", "icon": "◆",
-    "show_wiki": False,
+    "wiki_prefix": "Gig:_",
     "tags": ["gig", "badlands", "pacifica"],
     "quests": [
       {"id": "sts_bls_ina_02",  "name": "Big Pete's Got Big Problems",  "tags": ["badlands"]},
@@ -374,7 +374,7 @@ QUEST_CATALOG = [
   # ── GIGS — PHANTOM LIBERTY (DOGTOWN) ─────────────────────────────────────────
   {
     "id": "gigs_dogtown", "label": "Gigs — Dogtown (PL)", "color": "#cc66ff", "icon": "◆",
-    "show_wiki": False,
+    "wiki_prefix": "Gig:_",
     "tags": ["gig", "dogtown", "phantom-liberty"],
     "quests": [
       {"id": "sts_ep1_01",  "name": "Dogtown Saints",                   "tags": ["dogtown"]},
@@ -392,7 +392,7 @@ QUEST_CATALOG = [
   # ── CYBERPSYCHO SIGHTINGS ─────────────────────────────────────────────────────
   {
     "id": "cyberpsychos", "label": "Cyberpsycho Sightings", "color": "#ff4455", "icon": "⚠",
-    "show_wiki": False,
+    "wiki_prefix": "Cyberpsycho_Sighting:_",
     "tags": ["cyberpsycho", "ncpd"],
     "quests": [
       {"id": "ma_wat_kab_02",      "name": "Demons of War",             "tags": ["watson", "kabuki"]},
@@ -418,7 +418,7 @@ QUEST_CATALOG = [
   # ── NCPD REPORTED CRIMES ──────────────────────────────────────────────────────
   {
     "id": "ncpd", "label": "NCPD Reported Crimes", "color": "#ff8833", "icon": "⬡",
-    "show_wiki": False,
+    "wiki_url": "https://cyberpunk.fandom.com/wiki/Scanner_Hustles",
     "tags": ["ncpd", "reported-crime"],
     "quests": [
       # Watson — Kabuki

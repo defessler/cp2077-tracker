@@ -7,13 +7,13 @@ Reads your CP2077 save and generates a local HTML dashboard tracking completion 
 ## Usage
 
 ```bash
-python tracker_local.py              # generate dashboard, open in browser
-python tracker_local.py --no-open   # generate without opening
-python tracker_local.py --save AutoSave-5  # specific save slot
-python read_inventory.py            # scan sav.dat for iconic weapons
+python cp2077/tracker_local.py              # generate dashboard, open in browser
+python cp2077/tracker_local.py --no-open   # generate without opening
+python cp2077/tracker_local.py --save AutoSave-5  # specific save slot
+python cp2077/read_inventory.py            # scan sav.dat for iconic weapons
 ```
 
-Saves are read from `%USERPROFILE%\Saved Games\CD Projekt Red\Cyberpunk 2077` automatically. Override `SAVE_ROOT` at the top of `tracker_local.py` if needed.
+Saves are read from `%USERPROFILE%\Saved Games\CD Projekt Red\Cyberpunk 2077` automatically. Override `SAVE_ROOT` at the top of `cp2077/tracker_local.py` if needed.
 
 ### Requirements
 - Python 3.10+ (stdlib only — no pip dependencies for the main tracker)
@@ -26,13 +26,13 @@ Saves are read from `%USERPROFILE%\Saved Games\CD Projekt Red\Cyberpunk 2077` au
 
 | File | Purpose |
 |------|---------|
-| `tracker_local.py` | Entry point |
-| `cp2077_catalog.py` | Quest catalog, path tags, suppress IDs |
-| `cp2077_save.py` | Save adapter — reads metadata.json + sav.dat |
-| `tracker_engine.py` | Game-agnostic engine + HTML template |
-| `tracker_dashboard.html` | Generated output |
-| `tracker_weapons.json` | Manual overrides — iconic weapons + undetectable quests |
-| `read_inventory.py` | Writes tracker_weapons.json from sav.dat inventory scan |
+| `cp2077/tracker_local.py` | Entry point |
+| `cp2077/cp2077_catalog.py` | Quest catalog, path tags, suppress IDs |
+| `cp2077/cp2077_save.py` | Save adapter — reads metadata.json + sav.dat |
+| `engine/tracker_engine.py` | Game-agnostic engine + HTML template |
+| `cp2077/tracker_dashboard.html` | Generated output |
+| `cp2077/tracker_weapons.json` | Manual overrides — iconic weapons + undetectable quests |
+| `cp2077/read_inventory.py` | Writes tracker_weapons.json from sav.dat inventory scan |
 
 ---
 

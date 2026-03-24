@@ -22,8 +22,8 @@ from datetime import datetime
 from pathlib import Path
 
 HERE      = Path(__file__).parent
-SAVE_ROOT = Path(r"C:\Users\defes\Saved Games\CD Projekt Red\Cyberpunk 2077")
-TOOLS_DIR = HERE / "tools"
+SAVE_ROOT = Path.home() / "Saved Games" / "CD Projekt Red" / "Cyberpunk 2077"
+TOOLS_DIR = HERE.parent / "tools"
 
 # ── TweakDB ID → _weapon_* pseudo-ID mapping ──────────────────────────────────
 TWEAKDB_TO_WEAPON: dict[str, str] = {

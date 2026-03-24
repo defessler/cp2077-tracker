@@ -92,8 +92,8 @@ def _parse_facts_db(sav_path: Path, catalog: list[dict]) -> dict[str, int] | Non
   facts, or None if CyberpunkPythonHacks is unavailable or parse fails.
   """
   hack_dir = sav_path.parent.parent.parent / "tools" / "CyberpunkPythonHacks"
-  # Also look relative to this file
-  local_hack = Path(__file__).parent / "tools" / "CyberpunkPythonHacks"
+  # Also look relative to this file (tools/ is at repo root, one level up)
+  local_hack = Path(__file__).parent.parent / "tools" / "CyberpunkPythonHacks"
   if local_hack.exists():
     hack_dir = local_hack
   if not hack_dir.exists():
@@ -141,7 +141,7 @@ def _parse_quest_rewards(sav_path: Path) -> set[str]:
   Returns reward keys like 'q112_old_friend' for completed quest phases.
   Used for mid-chain tracking when the parent ID isn't in finishedQuests yet.
   """
-  hack_dir = Path(__file__).parent / "tools" / "CyberpunkPythonHacks"
+  hack_dir = Path(__file__).parent.parent / "tools" / "CyberpunkPythonHacks"
   if not hack_dir.exists():
     return set()
   if str(hack_dir) not in sys.path:

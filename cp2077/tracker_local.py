@@ -17,6 +17,9 @@ import sys
 import webbrowser
 from pathlib import Path
 
+# engine/ lives one level up from this file
+sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
+
 from cp2077_catalog import QUEST_CATALOG, LIFE_PATH_TAG, SUPPRESS_IDS
 from cp2077_save    import load_latest_save, parse_save
 from tracker_engine import build_catalog_data, generate_html
