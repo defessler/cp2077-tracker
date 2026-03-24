@@ -72,10 +72,10 @@ QUEST_CATALOG = [
       {"id": "q104_01_sabotage",         "name": "Lightning Breaks",           "dep": "after Ghost Town",               "check_id": "q104", "tags": ["act2", "panam"]},
       {"id": "q104_02_av_chase",         "name": "Life During Wartime",        "dep": "after Lightning Breaks",         "check_id": "q104", "tags": ["act2", "panam"]},
       # Takemura chain (parallel; Play It Safe also needs Life During Wartime)
-      {"id": "q112_01_old_friend",       "name": "Down on the Street",         "dep": "Playing for Time",               "check_id": "q112", "tags": ["act2", "takemura"]},
-      {"id": "q112_02_industrial_park",  "name": "Gimme Danger",               "dep": "after Down on the Street",       "check_id": "q112", "tags": ["act2", "takemura"]},
-      {"id": "q112_03_dashi_parade",     "name": "Play It Safe",               "dep": "after Gimme Danger (+ Life During Wartime)", "check_id": "q112", "tags": ["act2", "takemura"]},
-      {"id": "q112_04_hideout",          "name": "Search and Destroy",         "dep": "after Play It Safe",             "check_id": "q112", "tags": ["act2", "takemura"]},
+      {"id": "q112_01_old_friend",       "name": "Down on the Street",         "dep": "Playing for Time",               "check_id": "q112", "reward_key": "q112_old_friend",       "tags": ["act2", "takemura"]},
+      {"id": "q112_02_industrial_park",  "name": "Gimme Danger",               "dep": "after Down on the Street",       "check_id": "q112", "reward_key": "q112_industrial_park",   "tags": ["act2", "takemura"]},
+      {"id": "q112_03_dashi_parade",     "name": "Play It Safe",               "dep": "after Gimme Danger (+ Life During Wartime)", "check_id": "q112", "reward_key": "q112_dashi_parade",     "tags": ["act2", "takemura"]},
+      {"id": "q112_04_hideout",          "name": "Search and Destroy",         "dep": "after Play It Safe",             "check_id": "q112", "reward_key": "q112_hideout",           "tags": ["act2", "takemura"]},
       # ACT 3 — point of no return
       {"id": "q111",   "name": "Nocturne Op55N1",                         "dep": "after all Act 2 chains (point of no return)", "tags": ["act3"]},
       {"id": "q113_rescuing_hanako",     "name": "Last Caress",                "dep": "Nocturne Op55N1: Hanako path",   "check_id": "q113", "tags": ["act3", "hanako"]},
@@ -732,6 +732,46 @@ def _parse_facts_db(sav_path: Path) -> dict[str, int] | None:
   return result or None
 
 
+def _parse_quest_rewards(sav_path: Path) -> set[str]:
+  """
+  Parse QuestProgressedAggregator_v3 from sav.dat.
+  Returns a set of reward keys like 'q112_old_friend' for quest phases whose
+  named reward was granted — a reliable signal that the phase completed.
+  Only populated when a quest chain is mid-completion (parent not yet in
+  finishedQuests); once the chain finishes the check_id lookup takes over.
+  """
+  hack_dir = Path(__file__).parent / "tools" / "CyberpunkPythonHacks"
+  if not hack_dir.exists():
+    return set()
+  if str(hack_dir) not in sys.path:
+    sys.path.insert(0, str(hack_dir))
+  try:
+    import cp2077chunk
+    cp2077chunk.DataChunkTableChunk.VALID_CAPACITY = (0x100, 0x200, 0x400)
+    from cp2077save import SaveFile
+  except ImportError:
+    return set()
+  try:
+    sf = SaveFile(str(sav_path.parent))
+  except Exception:
+    return set()
+
+  rewards: set[str] = set()
+  for node in sf.nodes_info:
+    try:
+      if node.name.decode("ascii") != "QuestProgressedAggregator_v3":
+        continue
+    except Exception:
+      continue
+    data = bytes(sf.data[node.offset : node.offset + node.size])
+    # Extract all ASCII strings and collect those ending in ' reward'
+    for m in re.finditer(rb'[a-zA-Z0-9_\- ]{5,}', data):
+      s = m.group().decode()
+      if s.endswith(" reward"):
+        rewards.add(s[:-7])  # strip trailing ' reward'
+  return rewards
+
+
 def _save_timestamp(path: Path) -> datetime:
   """Return parsed save datetime for sorting. Returns datetime.min on failure."""
   try:
@@ -800,9 +840,10 @@ def load_latest_save(save_name: str | None) -> dict:
 def parse_save(raw: dict) -> dict:
   m = raw["Data"]["metadata"]
 
-  # ── Primary: parse FactsDB from sav.dat ───────────────────────────────────
-  sav_path   = Path(raw.get("_sav_path", ""))
-  sav_facts  = _parse_facts_db(sav_path) if sav_path.exists() else None
+  # ── Primary: parse FactsDB + quest rewards from sav.dat ──────────────────
+  sav_path     = Path(raw.get("_sav_path", ""))
+  sav_facts    = _parse_facts_db(sav_path)    if sav_path.exists() else None
+  quest_rewards= _parse_quest_rewards(sav_path) if sav_path.exists() else set()
 
   finished:     set[str] = set()
   active_facts: set[str] = set()
@@ -853,6 +894,7 @@ def parse_save(raw: dict) -> dict:
     },
     "finished_quests": sorted(finished),
     "active_facts":    sorted(active_facts),
+    "quest_rewards":   sorted(quest_rewards),
     "completed_at":    _build_completion_timestamps(),
     "choices": {
       "Romanced Judy":    "sq030_judy_lover"       in active_facts,
@@ -881,11 +923,15 @@ _TRACKER_WEAPONS: dict[str, bool] = _load_tracker_weapons()
 
 
 def quest_done(quest_id: str, finished: set[str], facts: set[str],
-               check_fact: str | None = None) -> bool:
+               check_fact: str | None = None,
+               reward_key: str | None = None,
+               quest_rewards: set[str] | None = None) -> bool:
   if quest_id.startswith("_weapon_"):
     return _TRACKER_WEAPONS.get(quest_id, False)
   if check_fact:
     return check_fact in facts
+  if reward_key and quest_rewards and reward_key in quest_rewards:
+    return True
   return quest_id in finished
 
 
@@ -897,10 +943,11 @@ _LIFE_PATH_TAG = {
 _ALL_LIFE_PATH_TAGS = set(_LIFE_PATH_TAG.values())
 
 def build_catalog_data(save: dict) -> list[dict]:
-  finished     = set(save["finished_quests"])
-  facts        = set(save["active_facts"])
-  completed_at = save.get("completed_at", {})
-  player_lp    = _LIFE_PATH_TAG.get(save.get("life_path", ""), "")
+  finished      = set(save["finished_quests"])
+  facts         = set(save["active_facts"])
+  quest_rewards = set(save.get("quest_rewards", []))
+  completed_at  = save.get("completed_at", {})
+  player_lp     = _LIFE_PATH_TAG.get(save.get("life_path", ""), "")
   catalogued_ids: set[str] = set()
   result = []
 
@@ -914,7 +961,8 @@ def build_catalog_data(save: dict) -> list[dict]:
         continue
       check_id   = q.get("check_id", q["id"])
       check_fact = q.get("check_fact")
-      done = quest_done(check_id, finished, facts, check_fact)
+      reward_key = q.get("reward_key")
+      done = quest_done(check_id, finished, facts, check_fact, reward_key, quest_rewards)
       catalogued_ids.add(check_id)
       ts_key = check_fact if check_fact else check_id
       quests_out.append({
