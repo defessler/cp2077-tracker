@@ -9,7 +9,7 @@ A local HTML dashboard that reads your Cyberpunk 2077 save file and tracks compl
 ## Features
 
 - Reads your latest save automatically (by in-save timestamp, not file date)
-- Tracks 340+ activities across 15 categories
+- Tracks 340+ activities across 16 categories
 - Wiki-validated quest catalog — names and IDs cross-referenced against the CDPR modding reference
 - Per-quest wiki links to cyberpunk.fandom.com
 - Sidebar progress bars per category with clickable navigation
@@ -217,15 +217,22 @@ The catalog in `cp2077_catalog.py` covers:
 
 | Category | Count |
 |----------|-------|
-| Main Story (Acts 1–3 + epilogues) | 39 |
-| Side Jobs | 35 |
-| Phantom Liberty (main + both path branches) | 26 |
-| PL Side Quests & Activities | 17 |
-| Minor Activities | 49 |
-| Gigs (all 6 districts + Dogtown) | 87 |
+| Main Story (Acts 1–3 + epilogues) | 40 |
+| Side Jobs | 34 |
+| Phantom Liberty (main + both path branches) | 27 |
+| PL Side Quests & Activities | 16 |
+| Minor Activities | 47 |
+| Gigs — Watson | 23 |
+| Gigs — Westbrook | 9 |
+| Gigs — City Center | 5 |
+| Gigs — Heywood | 13 |
+| Gigs — Santo Domingo | 12 |
+| Gigs — Badlands & Pacifica | 11 |
+| Gigs — Dogtown (PL) | 9 |
 | Cyberpsycho Sightings | 17 |
 | NCPD Reported Crimes | 45 |
 | Iconic Weapons | 34 |
+| **Total** | **342** |
 
 Quest IDs are validated against the [CDPR modding wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids).
 
