@@ -178,10 +178,11 @@ QUEST_CATALOG = [
       {"id": "q307_tomorrow",       "name": "Things Done Changed",              "dep": "The Killing Moon path",                 "check_fact": "q307_done", "tags": ["pl-main", "ending"]},
       {"id": "q307_before_tomorrow","name": "Who Wants to Live Forever",        "dep": "From Her to Eternity path",             "check_fact": "q307_done", "tags": ["pl-main", "ending"]},
       # PL minor side quests
+      {"id": "mq301",  "name": "Balls to the Wall",                               "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq303",  "name": "Dazed and Confused",                              "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
+      {"id": "mq304",  "name": "Run This Town",                                   "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq305",  "name": "Shot by Both Sides",                              "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
       {"id": "mq306",  "name": "No Easy Way Out",                                 "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
-      {"id": "mq301",  "name": "Balls to the Wall",                               "dep": "during PL",  "tags": ["pl-side", "dogtown"]},
     ],
   },
 
@@ -246,7 +247,7 @@ QUEST_CATALOG = [
       {"id": "mq032",  "name": "Sacrum Profanum",                          "dep": "Act 2",                    "tags": ["minor"]},
       {"id": "mq033",  "name": "Fool on the Hill",                         "dep": "Act 2",                    "tags": ["minor"]},
       {"id": "mq035",  "name": "Send in the Clowns",                       "dep": "Act 2",                    "tags": ["minor"]},
-      {"id": "mq036",  "name": "Sweet Dreams",                             "dep": "Act 2",                    "tags": ["minor"]},
+      {"id": "mq036",  "name": "Sweet Dreams",                             "dep": "Act 2",                    "reward_key": "mq036_money_back", "tags": ["minor"]},
       {"id": "mq037",  "name": "Coin Operated Boy",                        "dep": "Act 2",                    "tags": ["minor"]},
       {"id": "mq038",  "name": "Big in Japan",                             "dep": "Act 2",                    "tags": ["minor"]},
       {"id": "mq040",  "name": "Raymond Chandler Evening",                 "dep": "Act 2",                    "tags": ["minor"]},
@@ -665,8 +666,8 @@ def _wanted_fact_hashes() -> dict[int, str]:
       if q.get("check_fact"):
         names.add(q["check_fact"])
       if not qid.startswith("_weapon_"):
-        for n in (qid, cid,
-                  f"{qid}_done", f"{cid}_done",
+        # FactsDB uses suffixed names only — bare IDs never appear as fact names
+        for n in (f"{qid}_done", f"{cid}_done",
                   f"{qid}_finished", f"{cid}_finished",
                   f"{qid}_active", f"{cid}_active"):
           names.add(n)
@@ -848,31 +849,24 @@ def parse_save(raw: dict) -> dict:
   finished:     set[str] = set()
   active_facts: set[str] = set()
 
-  if sav_facts:
-    # Derive finished set from _done / _finished facts
-    for name, val in sav_facts.items():
-      if val:
-        active_facts.add(name)
-        if name.endswith("_done"):
-          finished.add(name[:-5])
-        elif name.endswith("_finished"):
-          finished.add(name[:-9])
-    # Supplement with metadata finishedQuests for IDs that lack FactsDB facts
-    # (some NCPD crimes and PL milestones only appear there)
-    meta_finished = set(m.get("finishedQuests", "").split())
-    extra = meta_finished - finished
-    if extra:
-      finished.update(extra)
-      print(f"[i] FactsDB: {len(sav_facts)} facts resolved; +{len(extra)} IDs from finishedQuests fallback")
-    else:
-      print(f"[i] FactsDB: {len(sav_facts)} facts resolved")
-  else:
-    # Fallback: metadata.json only
-    finished = set(m.get("finishedQuests", "").split())
-    for entry in m.get("facts", []):
-      key, _, val = entry.partition("=")
-      if val.strip() == "1":
-        active_facts.add(key.strip())
+  if not sav_facts:
+    sys.exit("[ERR] FactsDB parse failed — is CyberpunkPythonHacks installed in tools/?")
+
+  # Primary: FactsDB facts (_done / _finished → completion; all active facts → choices)
+  for name, val in sav_facts.items():
+    if val:
+      active_facts.add(name)
+      if name.endswith("_done"):
+        finished.add(name[:-5])
+      elif name.endswith("_finished"):
+        finished.add(name[:-9])
+
+  # Supplement: gigs (sts_*), NCPD activities (ma_*), and minor quests that have
+  # no FactsDB _done/_finished fact — only appear in metadata finishedQuests.
+  meta_finished = set(m.get("finishedQuests", "").split())
+  extra = meta_finished - finished
+  finished.update(extra)
+  print(f"[i] FactsDB: {len(sav_facts)} facts resolved; +{len(extra)} supplement from finishedQuests")
 
   return {
     "name":        m.get("name", "?"),
@@ -964,6 +958,7 @@ def build_catalog_data(save: dict) -> list[dict]:
       reward_key = q.get("reward_key")
       done = quest_done(check_id, finished, facts, check_fact, reward_key, quest_rewards)
       catalogued_ids.add(check_id)
+      catalogued_ids.add(q["id"])  # also suppress display IDs for phase-split quests
       ts_key = check_fact if check_fact else check_id
       quests_out.append({
         "id":           q["id"],
@@ -992,10 +987,10 @@ def build_catalog_data(save: dict) -> list[dict]:
       "quests":    quests_out,
     })
 
-  # Parent-group completion flags (auto-complete when all sub-quests finish; already tracked indirectly)
-  PARENT_FLAGS = {"q000", "q001"}
+  # Parent-group completion flags (auto-complete when all sub-quests finish; tracked indirectly)
+  PARENT_FLAGS = {"q000", "q001", "q306"}  # q306 tracked via check_fact on sub-quests
   # Dogtown airdrop sandbox activities — unnamed loot-crate events, not trackable quests
-  AIRDROP_IDS  = {"sa_ep1_31","sa_ep1_32","sa_ep1_34","sa_ep1_37","sa_ep1_38","sa_ep1_39","sa_ep1_303"}
+  AIRDROP_IDS  = {"sa_ep1_31","sa_ep1_32","sa_ep1_33","sa_ep1_34","sa_ep1_35","sa_ep1_37","sa_ep1_38","sa_ep1_39","sa_ep1_303","sa_ep1_306"}
   SUPPRESS     = PARENT_FLAGS | AIRDROP_IDS
   # Uncatalogued quests from save
   extra = sorted(q for q in finished if q not in catalogued_ids and not q.startswith("_") and q not in SUPPRESS)
