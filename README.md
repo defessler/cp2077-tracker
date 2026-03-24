@@ -1,23 +1,24 @@
 # Cyberpunk 2077 — 100% Completion Tracker
 
-A local HTML dashboard that reads your Cyberpunk 2077 save file and tracks completion across every content category: main story, side jobs, gigs, cyberpsycho sightings, NCPD crimes, iconic weapons, and Phantom Liberty.
-
-**Live preview:** https://defessler.github.io/game-tools/cp2077-tracker.html
+Reads your CP2077 save and generates a local HTML dashboard tracking completion across 334 activities: main story, side jobs, gigs, cyberpsychos, NCPD crimes, iconic weapons, and Phantom Liberty.
 
 ---
 
-## Features
+## Usage
 
-- Reads your latest save automatically (by in-save timestamp, not file date)
-- Tracks 340+ activities across 16 categories
-- Wiki-validated quest catalog — names and IDs cross-referenced against the CDPR modding reference
-- Per-quest wiki links to cyberpunk.fandom.com
-- Sidebar progress bars per category with clickable navigation
-- URL hash navigation (`#side_jobs`, `#phantom_liberty`, etc.) with browser back/forward support
-- Filter by completion status, search by name or tag
-- In-page **⚑ Report** button (hover any quest) to queue formatted bug reports
-- Iconic weapon inventory scanner (reads `sav.dat` via CyberpunkPythonHacks)
-- Completed categories marked with ☑ checkbox in the category grid
+```bash
+python tracker_local.py              # generate dashboard, open in browser
+python tracker_local.py --no-open   # generate without opening
+python tracker_local.py --save AutoSave-5  # specific save slot
+python read_inventory.py            # scan sav.dat for iconic weapons
+```
+
+Saves are read from `%USERPROFILE%\Saved Games\CD Projekt Red\Cyberpunk 2077` automatically. Override `SAVE_ROOT` at the top of `tracker_local.py` if needed.
+
+### Requirements
+- Python 3.10+ (stdlib only — no pip dependencies for the main tracker)
+- [CyberpunkPythonHacks](https://github.com/farzher/CyberpunkPythonHacks) in `tools/CyberpunkPythonHacks/` (required for FactsDB and weapon scanning)
+- `TweakDBIDs.json` in `tools/` (for weapon scanner only — from the [CDPR modding community](https://wiki.redmodding.org/))
 
 ---
 
@@ -25,140 +26,103 @@ A local HTML dashboard that reads your Cyberpunk 2077 save file and tracks compl
 
 | File | Purpose |
 |------|---------|
-| `tracker_local.py` | Entry point — configure paths here, run to generate dashboard |
-| `cp2077_catalog.py` | Quest catalog, suppress IDs, life-path tag map |
-| `cp2077_save.py` | CP2077 save adapter — reads metadata.json + sav.dat FactsDB |
-| `tracker_engine.py` | Generic engine — completion logic, HTML template |
-| `tracker_dashboard.html` | Generated output — open in browser |
-| `read_inventory.py` | Scans `sav.dat` for iconic weapons → `tracker_weapons.json` |
-| `validate_catalog.py` | Cross-references catalog against CDPR quest ID database |
+| `tracker_local.py` | Entry point |
+| `cp2077_catalog.py` | Quest catalog, path tags, suppress IDs |
+| `cp2077_save.py` | Save adapter — reads metadata.json + sav.dat |
+| `tracker_engine.py` | Game-agnostic engine + HTML template |
+| `tracker_dashboard.html` | Generated output |
+| `tracker_weapons.json` | Manual overrides — iconic weapons + undetectable quests |
+| `read_inventory.py` | Writes tracker_weapons.json from sav.dat inventory scan |
 
 ---
 
-## Setup
+## How CP2077 Saves Work
 
-### Requirements
+Each save slot contains two files:
 
-- Python 3.10+
-- No pip dependencies for the main tracker (pure stdlib)
+- **`metadata.*.json`** — a JSON summary written by the game: player level, life path, playtime, and critically, `finishedQuests` — a space-separated string of completed quest IDs. This is the only place quest completion is recorded in a human-readable form.
+- **`sav.dat`** — the full binary save. A custom chunked format parsed by CyberpunkPythonHacks. Contains game state nodes keyed by name.
 
-### Save path
+### finishedQuests
 
-`SAVE_ROOT` defaults to `Path.home() / "Saved Games" / "CD Projekt Red" / "Cyberpunk 2077"` which works for any Windows account. Override at the top of `tracker_local.py` if your saves are elsewhere.
+The `finishedQuests` string only contains **parent IDs** — the internal group ID for a quest chain, not the individual phase IDs. For example, the entire Automatic Love chain (four separate journal entries) all appear as `q105` in finishedQuests.
 
-### Usage
+This means quests that appear as separate items in the in-game journal must be mapped to their parent ID in the catalog using `check_id`. Individual phase IDs like `q105_dollhouse` never appear in finishedQuests.
 
-```bash
-# Generate dashboard and open in browser
-python tracker_local.py
+Some IDs in finishedQuests aren't real quests at all — they're parent group flags (e.g. `q000`, `q001`), duplicate IDs the game writes twice (e.g. `we_ep1_01` and `mq301` for the same quest), or internal sandbox/airdrop event IDs. These are all in `SUPPRESS_IDS` in `cp2077_catalog.py`.
 
-# Generate without opening
-python tracker_local.py --no-open
+### FactsDB (sav.dat → FactsTable node)
 
-# Use a specific save folder
-python tracker_local.py --save AutoSave-5
+The save's `FactsTable` node contains ~29,085 entries. Each entry is a pair of 32-bit unsigned integers: an FNV1a32 hash of the fact name, and its value. **No name strings are stored** — the game hashes fact names at runtime and never writes them to disk.
 
-# Scan inventory for iconic weapons (optional)
-python read_inventory.py
-```
+To read a specific fact, you compute `FNV1a32("fact_name")` and scan for it. The tracker pre-computes hashes for all known fact names derived from the quest catalog (e.g. `{qid}_done`, `{qid}_finished`) plus a set of manually-discovered outcome flags. Of 29,085 facts in a typical save, roughly 209 are resolved.
 
----
+Facts cover things `finishedQuests` can't: mid-chain completion states, NPC outcomes, romance flags, and world-state choices.
 
-## Iconic Weapon Scanner (optional)
+### QuestProgressedAggregator_v3 (sav.dat)
 
-`read_inventory.py` reads the binary `sav.dat` to detect which iconic weapons are in your inventory. It requires:
-
-1. **[CyberpunkPythonHacks](https://github.com/farzher/CyberpunkPythonHacks)** — place in `tools/CyberpunkPythonHacks/`
-2. **TweakDBIDs.json** — place in `tools/TweakDBIDs.json` (available from the [Cyberpunk modding community](https://wiki.redmodding.org/))
-
-A compatibility patch is applied automatically for save version 2.31:
-
-```python
-cp2077chunk.DataChunkTableChunk.VALID_CAPACITY = (0x100, 0x200, 0x400)
-```
-
-Once run, `tracker_weapons.json` is written and picked up automatically by `tracker_local.py` on the next run. You can also click any iconic weapon row in the dashboard to toggle it manually — state is stored in browser localStorage.
+This node contains plain ASCII strings — reward keys written when a quest phase completes and grants a reward. It's used for a small number of quests where neither a `_done` fact nor a finishedQuests entry exists but a reward phase string does. Example: `mq036_money_back reward` signals that the Sweet Dreams phone-call phase has triggered.
 
 ---
 
-## How Progress Is Tracked
+## What We Had to Figure Out
 
-CP2077 stores world state across several independent systems. The tracker reads them in this priority order:
+Building the catalog required cross-referencing multiple sources and probing the save directly.
+
+**Quest IDs** came from the [CDPR modding wiki quest ID reference](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids). Every quest, gig, and activity has an internal ID that may differ from its display name.
+
+**Audit loop** — the tracker reports any ID in `finishedQuests` that isn't in the catalog as "Uncatalogued". Running the tracker against a real save, looking up each unknown ID, and deciding whether to add it to the catalog or suppress it was done iteratively. This surfaced:
+- Parent group flags written alongside their children (suppressed)
+- Duplicate IDs CP2077 writes for the same quest (`we_ep1_01` and `mq301` both appear for "Balls to the Wall")
+- Sandbox/airdrop IDs with no journal entry (suppressed)
+
+**Phase splits** — some quests share a parent ID in finishedQuests but appear as separate journal entries. These had to be identified by comparing what the wiki lists as separate quests vs what the save actually records.
+
+**FactsDB discovery** — fact names are not stored anywhere accessible. To find them, we guessed naming patterns (`{qid}_done`, `{npc}_dead`, `{sq}_lover`) and computed FNV1a32 hashes, then scanned the FactsTable for matches. This is how choice flags like `q003_royce_dead`, `q306_reed_killed`, and `sq030_judy_lover` were found. Many attempted names returned no match — the game's internal naming is inconsistent and undocumented.
+
+**PL path detection** — the Reed vs Songbird choice (Firestarter, q304) doesn't write a fact with an obvious name. After exhaustive probing, `q306_reed_killed = 1` was found in the FactsDB for Songbird-path saves. This is used to derive `pl_path` and filter Reed-exclusive quests out of the count (they appear as dimmed "branch" rows via the Branches toggle).
+
+**q305_done doesn't exist** — the Phantom Liberty q305 quest chain completes without writing a `q305_done` fact. Since q306 cannot be reached without completing q305, q305 completion is inferred from `q306_done`.
+
+**mq045 (Paid in Full)** — confirmed undetectable. The quest (pay Viktor back his eddies) completes with no FactsDB fact, no finishedQuests entry, and no aggregator string. Stored as a manual confirmation in `tracker_weapons.json`.
+
+**Gigs and NCPD crimes** — these never write FactsDB facts. They only appear in `finishedQuests`. This is by design; the tracker always supplements FactsDB results with finishedQuests for this reason.
+
+---
+
+## Progress Tracking — Priority Order
 
 | Priority | Source | Used for |
 |----------|--------|----------|
-| 1 | `tracker_weapons.json` (manual) | Items/quests with no save record |
-| 2 | FactsDB (`sav.dat` — `FactsTable` node) | Named outcome flags, NPC states, path detection |
-| 3 | `QuestProgressedAggregator_v3` (`sav.dat`) | Mid-chain phase detection via reward key strings |
-| 4 | `finishedQuests` (metadata.json) | Gigs, NCPD crimes, most quest parent IDs |
-| 5 | Derived / inferred | PL path, q305 chain (q305_done never written) |
-
-### 1 · Manual overrides (`tracker_weapons.json`)
-Always wins. Used for items and quests that write nothing to the save:
-- **Iconic weapons** — detected by CRC32 hash scan of `sav.dat` inventory node via `read_inventory.py`
-- **mq045 Paid in Full** — one-step payment quest; game writes no completion record; stored as `"mq045": true`
-- Any `_weapon_*` or quest ID you manually set to `true`
-
-### 2 · FactsDB (`sav.dat` → `FactsTable` node)
-~29,085 named boolean/integer flags stored as FNV1a32 hashes. The tracker resolves ~209 per save:
-- Quest completion: `{qid}_done`, `{qid}_finished`
-- NPC outcomes: `q003_royce_dead`, `q112_takemura_dead`, `q306_reed_killed`
-- Romance flags: `sq030_judy_lover`, `sq012_fact_warn_river`
-- Choice flags: `q103_helped_panam`, `q110_voodoo_queen_dead`, `sq026_maiko_dead`
-- Path detection: `q306_reed_killed` → `pl_path = "songbird"` (used to filter Reed-path quests)
-
-Only ~209 of 29,085 facts are readable because fact names must be guessed and hashed; the game stores no name strings.
-
-### 3 · QuestProgressedAggregator_v3 (`sav.dat`)
-Plain ASCII reward-key strings written when a quest phase grants a reward. Used for:
-- `"mq036_money_back reward"` → Sweet Dreams phone-call phase complete
-- Pattern: `"{phase_id} reward"` — only works for quests that give explicit rewards
-
-### 4 · finishedQuests (metadata.json)
-Space-separated list of completed quest parent IDs. Primary source for all gigs (`sts_*`), map activities (`ma_*`), and most `mq`/`sq`/`q` quests that lack a FactsDB `_done` fact.
-
-> **Note:** `finishedQuests` only stores **parent IDs**. Phase-split quests (e.g. `q105_dollhouse`) use `check_id: "q105"` to point at the parent; the display ID is never in `finishedQuests`.
-
-### 5 · Derived / inferred
-- **Life path** — `metadata.lifePath` field → filters path-exclusive prologue quests
-- **PL path** — `q306_reed_killed` FactsDB fact → `pl_path = "songbird"` or `"reed"` → filters the non-taken branch quests (shown as dim "branch" rows when Branches toggle is on)
-- **q305 chain** — `q305_done` is never written by the game; completion is inferred from `q306_done` (you cannot reach q306 without completing q305)
+| 1 | `tracker_weapons.json` | Manual overrides — weapons + undetectable quests |
+| 2 | FactsDB (`sav.dat` FactsTable) | Quest `_done` facts, NPC outcomes, choices, path detection |
+| 3 | QuestProgressedAggregator_v3 | Mid-chain reward phase strings |
+| 4 | `finishedQuests` (metadata.json) | Gigs, NCPD crimes, most quests |
+| 5 | Derived | Life path → prologue filter; `q306_reed_killed` → PL path filter |
 
 ### Known undetectable quests
-A few quests write nothing to any tracking system and must be confirmed manually:
 
-| Quest | Why undetectable | How handled |
-|-------|-----------------|-------------|
-| mq045 Paid in Full | Single-interaction payment, no fact or finishedQuests entry | `tracker_weapons.json: "mq045": true` |
-
----
-
-## Save Format Notes
-
-- Save root: `%USERPROFILE%\Saved Games\CD Projekt Red\Cyberpunk 2077`
-- Latest save is detected by parsing `timestampString` from inside the metadata JSON — more reliable than file modification time since CP2077 cycles autosave slots
-- `finishedQuests` is a space-separated string of completed quest IDs
-- Only **parent IDs** appear (e.g. `q105`, not `q105_dollhouse`); phase-split quests use `check_id` to map display entries to the parent
-- FactsDB in `sav.dat` provides richer completion data (`_done`/`_finished` facts) and is required — CyberpunkPythonHacks must be installed
+| Quest | Reason | Fix |
+|-------|--------|-----|
+| mq045 Paid in Full | Single-interaction payment; no fact, no finishedQuests entry | Set `"mq045": true` in `tracker_weapons.json` |
 
 ---
 
-## Reconciling Save Data
+## Reconciling the Catalog
 
-When the dashboard shows an "Uncatalogued" category, those are quest IDs present in your save that the tracker doesn't recognize. To investigate:
+When the dashboard shows an **Uncatalogued** category, those IDs are in your save but not in the catalog. To resolve:
 
-1. Run `tracker_local.py` — uncatalogued IDs are printed and shown in the dashboard
-2. Look up the ID in the [CDPR modding wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids)
-3. Decide the correct action:
+1. Look up the ID in the [CDPR quest ID reference](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids)
+2. Decide:
 
-| Situation | Fix |
-|-----------|-----|
-| It's a real quest, not in catalog | Add it to `QUEST_CATALOG` in `cp2077_catalog.py` |
-| It's a parent ID that's already tracked via sub-quests | Add to `SUPPRESS_IDS` in `cp2077_catalog.py` |
-| It's a secondary/duplicate ID for a tracked quest | Add to `SUPPRESS_IDS` |
-| It's a sandbox/airdrop/internal event with no journal entry | Add to `SUPPRESS_IDS` |
+| Situation | Action |
+|-----------|--------|
+| Real quest missing from catalog | Add to `QUEST_CATALOG` in `cp2077_catalog.py` |
+| Parent ID already tracked via children | Add to `SUPPRESS_IDS` |
+| Duplicate ID for a tracked quest | Add to `SUPPRESS_IDS` |
+| Internal/sandbox ID with no journal entry | Add to `SUPPRESS_IDS` |
 
-Use the **⚑ Report** button in the dashboard to queue issues and copy them all at once.
+Use the **⚑ Report** button on any quest row to queue a formatted bug report.
 
 ---
 
@@ -166,143 +130,11 @@ Use the **⚑ Report** button in the dashboard to queue issues and copy them all
 
 The engine (`tracker_engine.py`) is game-agnostic. To track a new game:
 
-### 1. Create `mygame_catalog.py`
+1. **`mygame_catalog.py`** — define `QUEST_CATALOG`, `LIFE_PATH_TAG`, `SUPPRESS_IDS`
+2. **`mygame_save.py`** — implement `load_latest_save()` and `parse_save()` returning a SaveData dict with: `finished_quests`, `active_facts`, `quest_rewards`, `completed_at`, `manual_results`, `choices`, plus display fields (`name`, `level`, `play_time`, etc.)
+3. **`mygame_local.py`** — thin entry point, ~40 lines (see `tracker_local.py`)
 
-```python
-QUEST_CATALOG = [
-  {
-    "id": "main_story", "label": "Main Story", "color": "#00d4ff", "icon": "◈",
-    "tags": ["main-story"],
-    "quests": [
-      {"id": "quest_001", "name": "Opening Act", "tags": ["act1"]},
-      # check_id: override which ID to look up in finished_quests
-      # check_fact: use a named flag instead of finished_quests
-      # reward_key: use a reward aggregator key
-      # wiki: None=auto-generate, False=suppress, "Slug"=use this slug
-    ],
-  },
-  # Manual collectibles — prefix IDs with '_' to enable click-to-toggle
-  {
-    "id": "collectibles", "label": "Collectibles", "color": "#f0e040", "icon": "⚔",
-    "note": "Click any row to mark as collected",
-    "quests": [
-      {"id": "_item_sword", "name": "The Legendary Sword", "tags": ["weapon"]},
-    ],
-  },
-]
-
-LIFE_PATH_TAG = None   # or {"ClassName": "class-tag"} if game has life paths
-
-SUPPRESS_IDS: set[str] = {
-  # IDs that appear in finished_quests but aren't real trackable quests
-  "parent_flag_001",
-}
-```
-
-### 2. Create `mygame_save.py`
-
-Implement two functions:
-
-```python
-def load_latest_save(save_root: Path, save_name: str | None = None) -> dict:
-    """Find and load the most recent save file. Return raw save data."""
-    ...
-
-def parse_save(raw: dict, save_root: Path, catalog: list[dict]) -> dict:
-    """Parse raw save into SaveData dict.
-
-    Required keys:
-      finished_quests: list[str]    — completed activity IDs
-      active_facts:    list[str]    — active named flags
-      quest_rewards:   list[str]    — reward aggregator keys
-      completed_at:    dict[str,str] — id -> "DD Mon · HH:MM"
-      manual_results:  dict[str,bool] — _prefixed IDs -> True/False
-      choices:         dict[str,bool] — display flags for sidebar
-
-    Plus display fields: name, level, play_time, etc.
-    """
-    ...
-```
-
-### 3. Create `mygame_local.py`
-
-```python
-from pathlib import Path
-import argparse, webbrowser
-from mygame_catalog import QUEST_CATALOG, LIFE_PATH_TAG, SUPPRESS_IDS
-from mygame_save    import load_latest_save, parse_save
-from tracker_engine import build_catalog_data, generate_html
-
-SAVE_ROOT   = Path(r"C:\path\to\saves")
-OUTPUT_FILE = Path(__file__).parent / "mygame_dashboard.html"
-GAME_TITLE  = "My Game · Tracker"
-WIKI_BASE   = "https://mygame.wiki.gg/wiki/"  # or "" to disable wiki links
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--no-open", action="store_true")
-    args = parser.parse_args()
-
-    raw     = load_latest_save(SAVE_ROOT)
-    save    = parse_save(raw, SAVE_ROOT, QUEST_CATALOG)
-    catalog = build_catalog_data(save, QUEST_CATALOG,
-                                  life_path_tags=LIFE_PATH_TAG,
-                                  suppress_ids=SUPPRESS_IDS)
-    generate_html(save, catalog, OUTPUT_FILE,
-                  game_title=GAME_TITLE, wiki_base_url=WIKI_BASE)
-    if not args.no_open:
-        webbrowser.open(OUTPUT_FILE.as_uri())
-
-if __name__ == "__main__":
-    main()
-```
-
----
-
-## Quest Catalog
-
-The catalog in `cp2077_catalog.py` covers:
-
-| Category | Count |
-|----------|-------|
-| Main Story (Acts 1–3 + epilogues) | 40 |
-| Side Jobs | 34 |
-| Phantom Liberty (main, Songbird path; Reed branch shown as toggle) | 19 |
-| PL Side Quests & Activities | 16 |
-| Minor Activities | 47 |
-| Gigs — Watson | 23 |
-| Gigs — Westbrook | 9 |
-| Gigs — City Center | 5 |
-| Gigs — Heywood | 13 |
-| Gigs — Santo Domingo | 12 |
-| Gigs — Badlands & Pacifica | 11 |
-| Gigs — Dogtown (PL) | 9 |
-| Cyberpsycho Sightings | 17 |
-| NCPD Reported Crimes | 45 |
-| Iconic Weapons | 34 |
-| **Total (tracked)** | **334** |
-
-Quest IDs are validated against the [CDPR modding wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids).
-
-### Phase-split quests
-
-Some quests share a parent ID in `finishedQuests` but appear as separate journal entries. These use a `check_id` field pointing to the parent while displaying the individual phase name:
-
-```python
-{"id": "q105_dollhouse", "name": "Automatic Love", "check_id": "q105", ...}
-{"id": "q105_02_jigjig",  "name": "The Space in Between", "check_id": "q105", ...}
-```
-
----
-
-## Reporting Issues
-
-Use the **⚑ Report** button (hover any quest row in the dashboard) to queue a formatted bug report. Common issues:
-
-- Quest shows wrong completion status
-- Wrong or missing wiki link
-- Quest should be split into separate entries (or merged)
-- Missing quest not in catalog
+The SaveData contract is documented in the docstring at the top of `tracker_engine.py`.
 
 ---
 
