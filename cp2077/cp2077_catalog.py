@@ -1,6 +1,18 @@
 """
 cp2077_catalog.py — Cyberpunk 2077 quest catalog and game-specific metadata.
 
+Sources:
+  Quest IDs / internal names:
+    CDPR Modding Wiki — https://wiki.redmodding.org/cyberpunk-2077-modding/
+    (reference-quest-ids page)
+  Quest names and structure:
+    Cyberpunk 2077 Wiki (Fandom) — https://cyberpunk.fandom.com/
+  Gig and cyberpsycho completability:
+    PowerPyx — https://www.powerpyx.com/cyberpunk-2077-trophy-guide-roadmap/
+  Cut content identification:
+    Nexus Mods community — e.g. Hothead gig confirmed cut
+    https://www.nexusmods.com/cyberpunk2077/images/7649
+
 To update this catalog:
   - Add/remove quest entries from QUEST_CATALOG
   - Update SUPPRESS_IDS when the save writes parent/duplicate IDs that are
@@ -289,7 +301,7 @@ QUEST_CATALOG = [
       {"id": "sts_wbr_jpn_02",  "name": "We Have Your Wife",            "tags": ["japantown"]},
       {"id": "sts_wbr_jpn_03",  "name": "A Shrine Defiled",             "tags": ["japantown"]},
       {"id": "sts_wbr_jpn_05",  "name": "Wakako's Favorite",            "tags": ["japantown"]},
-      {"id": "sts_wbr_jpn_09",  "name": "Hothead",                      "tags": ["japantown"]},
+      {"id": "sts_wbr_jpn_09",  "name": "Hothead",                      "tags": ["japantown"], "wiki": False},  # cut content — no wiki page exists
       {"id": "sts_wbr_jpn_12",  "name": "Greed Never Pays",             "tags": ["japantown"]},
     ],
   },

@@ -50,9 +50,14 @@ The SaveData contract is documented in the docstring at the top of `tracker_engi
 
 ## Credits
 
-- Save parsing: [CyberpunkPythonHacks](https://github.com/farzher/CyberpunkPythonHacks) by Ali Farzanrad
-- Quest IDs: [CDPR Modding Wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/)
-- Wiki links: [Cyberpunk 2077 Wiki (Fandom)](https://cyberpunk.fandom.com/)
+| What | Source |
+|------|--------|
+| Save file parsing (FactsDB, QuestProgressedAggregator, inventory) | [CyberpunkPythonHacks](https://github.com/farzher/CyberpunkPythonHacks) by Ali Farzanrad |
+| Quest IDs and internal names | [CDPR Modding Wiki — Quest ID Reference](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids) |
+| TweakDB IDs (weapon hash lookup) | [CDPR Modding Community](https://wiki.redmodding.org/) — `TweakDBIDs.json` |
+| Wiki links (quest, gig, cyberpsycho pages) | [Cyberpunk 2077 Wiki (Fandom)](https://cyberpunk.fandom.com/) |
+| Gig and cyberpsycho completability research | [PowerPyx Cyberpunk 2077 guides](https://www.powerpyx.com/cyberpunk-2077-trophy-guide-roadmap/) |
+| Cut content identification (Hothead gig) | [Nexus Mods community](https://www.nexusmods.com/cyberpunk2077/images/7649) |
 
 ---
 
