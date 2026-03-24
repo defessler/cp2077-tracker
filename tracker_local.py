@@ -75,7 +75,8 @@ QUEST_CATALOG = [
       {"id": "q112_02_industrial_park",  "name": "Gimme Danger",               "dep": "after Down on the Street",       "check_id": "q112", "tags": ["act2", "takemura"]},
       {"id": "q112_03_dashi_parade",     "name": "Play It Safe",               "dep": "after Gimme Danger (+ Life During Wartime)", "check_id": "q112", "tags": ["act2", "takemura"]},
       {"id": "q112_04_hideout",          "name": "Search and Destroy",         "dep": "after Play It Safe",             "check_id": "q112", "tags": ["act2", "takemura"]},
-      # ACT 3 — requires all three Act 2 chains finished → Nocturne Op55N1 (point of no return)
+      # ACT 3 — point of no return
+      {"id": "q111",   "name": "Nocturne Op55N1",                         "dep": "after all Act 2 chains (point of no return)", "tags": ["act3"]},
       {"id": "q113_rescuing_hanako",     "name": "Last Caress",                "dep": "Nocturne Op55N1: Hanako path",   "check_id": "q113", "tags": ["act3", "hanako"]},
       {"id": "q113_corpo",               "name": "Totalimmortal",              "dep": "after Last Caress",              "check_id": "q113", "tags": ["act3", "hanako"]},
       {"id": "q114_01_nomad_initiation", "name": "We Gotta Live Together",     "dep": "Nocturne Op55N1: Nomad path (+ Queen of the Highway)", "check_id": "q114", "tags": ["act3", "panam"]},
@@ -89,6 +90,7 @@ QUEST_CATALOG = [
       {"id": "q202",   "name": "Ending: All Along the Watchtower (Nomad)","dep": "Belly of the Beast path", "tags": ["ending", "panam"]},
       {"id": "q203",   "name": "Ending: Path of Glory (Johnny/Rogue)",    "dep": "Knockin' on Heaven's Door path", "tags": ["ending", "johnny", "rogue"]},
       {"id": "q204",   "name": "Ending: New Dawn Fades (Arasaka)",        "dep": "Changes path",            "tags": ["ending"]},
+      {"id": "q205",   "name": "Ending: Don't Fear the Reaper (Secret)",  "dep": "requires 70%+ Johnny affinity + all Tapeworm phases", "tags": ["ending", "johnny"]},
     ],
   },
 
@@ -887,16 +889,29 @@ def quest_done(quest_id: str, finished: set[str], facts: set[str],
   return quest_id in finished
 
 
+_LIFE_PATH_TAG = {
+  "Corporate": "corpo",
+  "Nomad":     "nomad",
+  "StreetKid": "street-kid",
+}
+_ALL_LIFE_PATH_TAGS = set(_LIFE_PATH_TAG.values())
+
 def build_catalog_data(save: dict) -> list[dict]:
   finished     = set(save["finished_quests"])
   facts        = set(save["active_facts"])
   completed_at = save.get("completed_at", {})
+  player_lp    = _LIFE_PATH_TAG.get(save.get("life_path", ""), "")
   catalogued_ids: set[str] = set()
   result = []
 
   for cat_idx, cat in enumerate(QUEST_CATALOG):
     quests_out = []
     for q_idx, q in enumerate(cat["quests"]):
+      # Skip life path quests that don't belong to this player's life path
+      q_tags = set(q.get("tags", []))
+      lp_tags_on_quest = q_tags & _ALL_LIFE_PATH_TAGS
+      if lp_tags_on_quest and player_lp not in lp_tags_on_quest:
+        continue
       check_id   = q.get("check_id", q["id"])
       check_fact = q.get("check_fact")
       done = quest_done(check_id, finished, facts, check_fact)
