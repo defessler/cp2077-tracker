@@ -66,6 +66,7 @@ QUEST_CATALOG = [
       {"id": "q110_01_voodooboys",       "name": "M'ap Tann Pèlen",            "dep": "after I Walk the Line",          "check_id": "q110", "tags": ["act2", "voodoo-boys"]},
       {"id": "q110_03_cyberspace",       "name": "Transmission",               "dep": "after M'ap Tann Pèlen",          "check_id": "q110", "tags": ["act2", "voodoo-boys"]},
       {"id": "q108",                     "name": "Never Fade Away",            "dep": "plays during Transmission",      "tags": ["act2", "johnny"]},
+      {"id": "sq032",                    "name": "Tapeworm",                   "dep": "4 phases across Act 2 (auto-triggers)", "tags": ["act2", "johnny"]},
       # Panam / Nomad chain (parallel)
       {"id": "q103",                     "name": "Ghost Town",                 "dep": "Playing for Time",               "tags": ["act2", "panam"]},
       {"id": "q104_01_sabotage",         "name": "Lightning Breaks",           "dep": "after Ghost Town",               "check_id": "q104", "tags": ["act2", "panam"]},
@@ -127,8 +128,7 @@ QUEST_CATALOG = [
       {"id": "sq026_04_hiromi", "name": "Pisces",                         "dep": "after Talkin' 'bout a Revolution",   "check_id": "sq026", "tags": ["judy"]},
       # River romance chain (dep: The Hunt)
       {"id": "sq029",          "name": "Following the River",                  "dep": "after The Hunt",                      "tags": ["river", "romance"]},
-      # Late Act 2 — Tapeworm phases trigger from Automatic Love → Transmission → Life During Wartime → Search & Destroy
-      {"id": "sq032",          "name": "Tapeworm",                             "dep": "all 4 phases across Act 2 main quests","tags": ["johnny"]},
+      # Late Act 2 — Johnny side chain unlocks after Tapeworm completes
       {"id": "sq031_smack_my_bitch_up", "name": "A Cool Metal Fire", "dep": "after Tapeworm (Automatic Love phase)",  "check_id": "sq031", "tags": ["johnny"]},
       {"id": "sq031_rogue",             "name": "Chippin' In",        "dep": "after all Tapeworm phases",              "check_id": "sq031", "tags": ["johnny", "rogue"]},
       {"id": "sq031_cinema",            "name": "Blistering Love",    "dep": "after Chippin' In",                      "check_id": "sq031", "tags": ["johnny", "rogue"]},
