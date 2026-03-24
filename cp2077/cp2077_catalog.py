@@ -289,7 +289,7 @@ QUEST_CATALOG = [
       {"id": "sts_wbr_jpn_02",  "name": "We Have Your Wife",            "tags": ["japantown"]},
       {"id": "sts_wbr_jpn_03",  "name": "A Shrine Defiled",             "tags": ["japantown"]},
       {"id": "sts_wbr_jpn_05",  "name": "Wakako's Favorite",            "tags": ["japantown"]},
-      {"id": "sts_wbr_jpn_09",  "name": "Hothead",                      "tags": ["japantown"], "wiki": "Hothead_(gig)"},
+      {"id": "sts_wbr_jpn_09",  "name": "Hothead",                      "tags": ["japantown"]},
       {"id": "sts_wbr_jpn_12",  "name": "Greed Never Pays",             "tags": ["japantown"]},
     ],
   },
