@@ -57,6 +57,7 @@ QUEST_CATALOG = [
       # INTERLUDE / ACT 2
       {"id": "q101_01_firestorm", "name": "Love Like Fire",       "dep": "after The Heist (Johnny interlude)", "check_id": "q101", "tags": ["act2", "johnny"]},
       {"id": "q101",              "name": "Playing for Time",     "dep": "after Love Like Fire (wakes V)",     "tags": ["act2"]},
+      {"id": "sq032",             "name": "Tapeworm",             "dep": "4 phases auto-trigger across Act 2", "tags": ["act2", "johnny"]},
       # Judy / Clouds chain (parallel with Panam & Takemura chains)
       {"id": "q105_dollhouse",           "name": "Automatic Love",             "dep": "Playing for Time",               "check_id": "q105", "tags": ["act2", "judy"]},
       {"id": "q105_02_jigjig",           "name": "The Space in Between",       "dep": "after Automatic Love",           "check_id": "q105", "tags": ["act2", "judy"]},
@@ -66,7 +67,6 @@ QUEST_CATALOG = [
       {"id": "q110_01_voodooboys",       "name": "M'ap Tann Pèlen",            "dep": "after I Walk the Line",          "check_id": "q110", "tags": ["act2", "voodoo-boys"]},
       {"id": "q110_03_cyberspace",       "name": "Transmission",               "dep": "after M'ap Tann Pèlen",          "check_id": "q110", "tags": ["act2", "voodoo-boys"]},
       {"id": "q108",                     "name": "Never Fade Away",            "dep": "plays during Transmission",      "tags": ["act2", "johnny"]},
-      {"id": "sq032",                    "name": "Tapeworm",                   "dep": "4 phases across Act 2 (auto-triggers)", "tags": ["act2", "johnny"]},
       # Panam / Nomad chain (parallel)
       {"id": "q103",                     "name": "Ghost Town",                 "dep": "Playing for Time",               "tags": ["act2", "panam"]},
       {"id": "q104_01_sabotage",         "name": "Lightning Breaks",           "dep": "after Ghost Town",               "check_id": "q104", "tags": ["act2", "panam"]},
