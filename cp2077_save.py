@@ -329,8 +329,7 @@ def parse_save(raw: dict, save_root: Path, catalog: list[dict]) -> dict:
       # Romance
       "Pyramid Song: Judy":      ("sq030_judy_lover"       in active_facts, "Romanced",    "Friends",     "Pyramid_Song"),
       "Following the River":     ("sq012_fact_warn_river"  in active_facts, "Warned River","No warning",  "Following_the_River"),
-      # Pending
-      "Paid in Full: Viktor":    ("mq045"                  in finished,     "Paid",        "Not paid",    "Paid_in_Full"),
+      # Pending — endings
       "PL: Who Wants to Live…":  ("q307"                   in finished,     "Done",        "Pending",     "Who_Wants_to_Live_Forever"),
       "Nocturne Op55N1 (ending)":("q113"                   in finished,     "Chosen",      "Pending",     "Nocturne_Op55N1"),
     },

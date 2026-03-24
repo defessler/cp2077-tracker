@@ -60,8 +60,11 @@ def quest_done(quest_id: str,
                quest_rewards: set[str] | None = None,
                manual_results: dict[str, bool] | None = None) -> bool:
   """Return True if the quest/activity is considered complete."""
+  # Manual override always wins — used for items/quests with no detectable save state
+  if manual_results and manual_results.get(quest_id):
+    return True
   if quest_id.startswith("_"):
-    return bool(manual_results and manual_results.get(quest_id, False))
+    return False  # manual-only items default to not-found
   if check_fact:
     return check_fact in facts
   if reward_key and quest_rewards and reward_key in quest_rewards:
