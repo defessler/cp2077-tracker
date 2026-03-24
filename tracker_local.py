@@ -40,7 +40,8 @@ def main() -> None:
 
   catalog = build_catalog_data(save, QUEST_CATALOG,
                                 life_path_tags=LIFE_PATH_TAG,
-                                suppress_ids=SUPPRESS_IDS)
+                                suppress_ids=SUPPRESS_IDS,
+                                branch_tags={"reed", "songbird"})
 
   total = sum(c["total"]     for c in catalog if c["id"] != "uncatalogued")
   done  = sum(c["completed"] for c in catalog if c["id"] != "uncatalogued")

@@ -75,7 +75,8 @@ def quest_done(quest_id: str,
 def build_catalog_data(save: dict,
                        catalog: list[dict],
                        life_path_tags: dict[str, str] | None = None,
-                       suppress_ids: set[str] | None = None) -> list[dict]:
+                       suppress_ids: set[str] | None = None,
+                       branch_tags: set[str] | None = None) -> list[dict]:
   """
   Build per-category completion data from save state and catalog.
 
@@ -115,36 +116,48 @@ def build_catalog_data(save: dict,
   for cat_idx, cat in enumerate(catalog):
     quests_out: list[dict] = []
     for q_idx, q in enumerate(cat["quests"]):
-      # Skip path-exclusive quests that don't apply to this player
       q_tags       = set(q.get("tags", []))
       lp_on_quest  = q_tags & all_lp_tags
+      is_uncompletable = bool(q.get("uncompletable"))
+
+      # Path-exclusive quests: show as branch if in branch_tags, else skip
+      branch_label = ""
       if lp_on_quest and not (lp_on_quest & player_tags):
-        continue
+        if branch_tags and (lp_on_quest & branch_tags):
+          branch_label = next(iter(lp_on_quest & branch_tags)).title() + " path"
+        else:
+          continue  # hide life-path prologue quests entirely
 
       check_id   = q.get("check_id", q["id"])
       check_fact = q.get("check_fact")
       reward_key = q.get("reward_key")
-      done = quest_done(check_id, finished, facts, check_fact, reward_key,
-                        quest_rewards, manual_results)
+      applicable = not branch_label
+      done = False if (not applicable or is_uncompletable) else quest_done(
+          check_id, finished, facts, check_fact, reward_key, quest_rewards, manual_results)
       catalogued_ids.add(check_id)
       catalogued_ids.add(q["id"])
 
       ts_key = check_fact if check_fact else check_id
       quests_out.append({
-        "id":           q["id"],
-        "name":         q["name"],
-        "dep":          q.get("dep", ""),
-        "wiki":         q.get("wiki"),   # None=auto, False=suppress, str=slug
-        "tags":         list(dict.fromkeys(q.get("tags", []) + cat.get("tags", []))),
-        "done":         done,
-        "seq":          q_idx,
-        "cat_seq":      cat_idx * 1000,
-        "manual":       q["id"].startswith("_"),
-        "completed_at": completed_at.get(ts_key, ""),
+        "id":             q["id"],
+        "name":           q["name"],
+        "dep":            q.get("dep", ""),
+        "wiki":           q.get("wiki"),
+        "tags":           list(dict.fromkeys(q.get("tags", []) + cat.get("tags", []))),
+        "done":           done,
+        "seq":            q_idx,
+        "cat_seq":        cat_idx * 1000,
+        "manual":         q["id"].startswith("_"),
+        "completed_at":   completed_at.get(ts_key, ""),
+        "applicable":     applicable,
+        "branch":         branch_label,
+        "uncompletable":  is_uncompletable,
+        "note":           q.get("note", ""),
       })
 
-    total     = len(quests_out)
-    completed = sum(1 for q in quests_out if q["done"])
+    # Only count quests that are applicable and completable in totals
+    total     = sum(1 for q in quests_out if q["applicable"] and not q["uncompletable"])
+    completed = sum(1 for q in quests_out if q["done"] and q["applicable"] and not q["uncompletable"])
     result.append({
       "id":        cat["id"],
       "label":     cat["label"],
@@ -313,6 +326,11 @@ input[type=search]::placeholder{color:var(--muted)}
 .quest-row:last-child{border-bottom:none}
 .quest-row:hover{background:#0c0c1a}
 .quest-row.hidden{display:none}
+.quest-row.q-branch{opacity:.45;border-left:2px solid #2a2a4a}
+.quest-row.q-uncompletable{opacity:.4;text-decoration:line-through;color:var(--muted)}
+.q-branch-label,.q-unc-label{font-size:9px;letter-spacing:.8px;text-transform:uppercase;padding:1px 4px;border-radius:2px;margin-left:4px;vertical-align:middle}
+.q-branch-label{color:#446;background:#0d0d22;border:1px solid #2a2a4a}
+.q-unc-label{color:#543;background:#1a0d0d;border:1px solid #3a1a1a}
 .q-check{font-size:14px;line-height:1;margin-top:1px;flex-shrink:0}
 .q-done .q-check{color:var(--green)}
 .q-todo .q-check{color:#333}
@@ -426,6 +444,9 @@ input[type=search]::placeholder{color:var(--muted)}
       <button class="sort-btn" data-s="az">A → Z</button>
       <button class="sort-btn" data-s="todo_first">Incomplete First</button>
       <button class="sort-btn" data-s="done_first">Completed First</button>
+      <div class="toolbar-sep"></div>
+      <button class="filter-btn" id="branchToggle">Branches</button>
+      <button class="filter-btn" id="uncToggle">Uncompletable</button>
       <input type="search" id="searchBox" placeholder="Search quests, IDs, tags…">
       <span class="count-badge" id="countBadge"></span>
     </div>
@@ -630,10 +651,14 @@ function renderQuestPanels() {
             if (baseName) wikiUrl = wikiBase + encodeURIComponent(baseName.replace(/ /g,'_'));
           }
         }
-        return `<div class="quest-row ${q.done?'q-done':'q-todo'}" data-done="${q.done}" data-id="${q.id}" data-name="${q.name.toLowerCase()}" data-tags="${dedup.join(' ')}" data-manual="${q.manual||false}">
+        const rowClass = q.branch ? 'q-branch' : q.uncompletable ? 'q-uncompletable' : (q.done?'q-done':'q-todo');
+        const extraLabel = q.branch
+          ? `<span class="q-branch-label">${q.branch}</span>`
+          : q.uncompletable ? `<span class="q-unc-label">${q.note||'uncompletable'}</span>` : '';
+        return `<div class="quest-row ${rowClass}" data-done="${q.done}" data-id="${q.id}" data-name="${q.name.toLowerCase()}" data-tags="${dedup.join(' ')}" data-manual="${q.manual||false}" data-branch="${!!q.branch}" data-unc="${!!q.uncompletable}">
           <span class="q-check">${q.done?'✓':'○'}</span>
           <div class="q-info">
-            <div class="q-name">${q.name}${q.dep?`<span class="q-dep">▸ ${q.dep}</span>`:''}${wikiUrl?` <a class="q-wiki" href="${wikiUrl}" target="_blank" title="Open on wiki" onclick="event.stopPropagation()">WIKI ↗</a>`:''}<button class="q-report" onclick="reportIssue('${q.id}','${cat.label.replace(/'/g,"\\'")}','${q.name.replace(/'/g,"\\'")}',${q.done},event)" title="Report issue">⚑ REPORT</button></div>
+            <div class="q-name">${q.name}${extraLabel}${q.dep?`<span class="q-dep">▸ ${q.dep}</span>`:''}${wikiUrl?` <a class="q-wiki" href="${wikiUrl}" target="_blank" title="Open on wiki" onclick="event.stopPropagation()">WIKI ↗</a>`:''}<button class="q-report" onclick="reportIssue('${q.id}','${cat.label.replace(/'/g,"\\'")}','${q.name.replace(/'/g,"\\'")}',${q.done},event)" title="Report issue">⚑ REPORT</button></div>
             <div class="q-id">${q.id}${q.done&&q.completed_at?`<span class="q-ts">${q.completed_at}</span>`:''}</div>
             <div class="q-tags">${dedup.map(t=>`<span class="q-tag t-${t}" data-tag="${t}">${t}</span>`).join('')}</div>
           </div>
@@ -660,15 +685,23 @@ function renderQuestPanels() {
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────────
-let activeFilter = 'all';
+let activeFilter  = 'all';
+let showBranches  = false;
+let showUncompletable = false;
+
 function applyFilters() {
-  const q   = document.getElementById('searchBox').value.toLowerCase().trim();
+  const q    = document.getElementById('searchBox').value.toLowerCase().trim();
   const rows = document.querySelectorAll('.quest-row');
   let vis = 0;
   rows.forEach(row=>{
+    const isBranch = row.dataset.branch === 'true';
+    const isUnc    = row.dataset.unc    === 'true';
+    // Hide branch/uncompletable unless toggled on
+    if (isBranch    && !showBranches)      { row.classList.add('hidden');    return; }
+    if (isUnc       && !showUncompletable) { row.classList.add('hidden');    return; }
     const filterOk = activeFilter==='all'
       || (activeFilter==='done' && row.dataset.done==='true')
-      || (activeFilter==='todo' && row.dataset.done==='false');
+      || (activeFilter==='todo' && row.dataset.done==='false' && !isBranch && !isUnc);
     const searchOk = !q
       || row.dataset.name.includes(q)
       || row.dataset.id.includes(q)
@@ -692,13 +725,24 @@ document.addEventListener('DOMContentLoaded',()=>{
   renderCards();
   renderQuestPanels();
 
-  document.querySelectorAll('.filter-btn').forEach(b=>{
+  document.querySelectorAll('.filter-btn[data-f]').forEach(b=>{
     b.addEventListener('click',()=>{
-      document.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.filter-btn[data-f]').forEach(x=>x.classList.remove('active'));
       b.classList.add('active');
       activeFilter = b.dataset.f;
       applyFilters();
     });
+  });
+
+  document.getElementById('branchToggle').addEventListener('click', b=>{
+    showBranches = !showBranches;
+    b.currentTarget.classList.toggle('active', showBranches);
+    renderQuestPanels();
+  });
+  document.getElementById('uncToggle').addEventListener('click', b=>{
+    showUncompletable = !showUncompletable;
+    b.currentTarget.classList.toggle('active', showUncompletable);
+    renderQuestPanels();
   });
 
   document.querySelectorAll('.sort-btn').forEach(b=>{

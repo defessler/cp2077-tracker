@@ -44,11 +44,7 @@ A local HTML dashboard that reads your Cyberpunk 2077 save file and tracks compl
 
 ### Save path
 
-Edit `SAVE_ROOT` at the top of `tracker_local.py`:
-
-```python
-SAVE_ROOT = Path(r"C:\Users\YourName\Saved Games\CD Projekt Red\Cyberpunk 2077")
-```
+`SAVE_ROOT` defaults to `Path.home() / "Saved Games" / "CD Projekt Red" / "Cyberpunk 2077"` which works for any Windows account. Override at the top of `tracker_local.py` if your saves are elsewhere.
 
 ### Usage
 
@@ -82,6 +78,58 @@ cp2077chunk.DataChunkTableChunk.VALID_CAPACITY = (0x100, 0x200, 0x400)
 ```
 
 Once run, `tracker_weapons.json` is written and picked up automatically by `tracker_local.py` on the next run. You can also click any iconic weapon row in the dashboard to toggle it manually — state is stored in browser localStorage.
+
+---
+
+## How Progress Is Tracked
+
+CP2077 stores world state across several independent systems. The tracker reads them in this priority order:
+
+| Priority | Source | Used for |
+|----------|--------|----------|
+| 1 | `tracker_weapons.json` (manual) | Items/quests with no save record |
+| 2 | FactsDB (`sav.dat` — `FactsTable` node) | Named outcome flags, NPC states, path detection |
+| 3 | `QuestProgressedAggregator_v3` (`sav.dat`) | Mid-chain phase detection via reward key strings |
+| 4 | `finishedQuests` (metadata.json) | Gigs, NCPD crimes, most quest parent IDs |
+| 5 | Derived / inferred | PL path, q305 chain (q305_done never written) |
+
+### 1 · Manual overrides (`tracker_weapons.json`)
+Always wins. Used for items and quests that write nothing to the save:
+- **Iconic weapons** — detected by CRC32 hash scan of `sav.dat` inventory node via `read_inventory.py`
+- **mq045 Paid in Full** — one-step payment quest; game writes no completion record; stored as `"mq045": true`
+- Any `_weapon_*` or quest ID you manually set to `true`
+
+### 2 · FactsDB (`sav.dat` → `FactsTable` node)
+~29,085 named boolean/integer flags stored as FNV1a32 hashes. The tracker resolves ~209 per save:
+- Quest completion: `{qid}_done`, `{qid}_finished`
+- NPC outcomes: `q003_royce_dead`, `q112_takemura_dead`, `q306_reed_killed`
+- Romance flags: `sq030_judy_lover`, `sq012_fact_warn_river`
+- Choice flags: `q103_helped_panam`, `q110_voodoo_queen_dead`, `sq026_maiko_dead`
+- Path detection: `q306_reed_killed` → `pl_path = "songbird"` (used to filter Reed-path quests)
+
+Only ~209 of 29,085 facts are readable because fact names must be guessed and hashed; the game stores no name strings.
+
+### 3 · QuestProgressedAggregator_v3 (`sav.dat`)
+Plain ASCII reward-key strings written when a quest phase grants a reward. Used for:
+- `"mq036_money_back reward"` → Sweet Dreams phone-call phase complete
+- Pattern: `"{phase_id} reward"` — only works for quests that give explicit rewards
+
+### 4 · finishedQuests (metadata.json)
+Space-separated list of completed quest parent IDs. Primary source for all gigs (`sts_*`), map activities (`ma_*`), and most `mq`/`sq`/`q` quests that lack a FactsDB `_done` fact.
+
+> **Note:** `finishedQuests` only stores **parent IDs**. Phase-split quests (e.g. `q105_dollhouse`) use `check_id: "q105"` to point at the parent; the display ID is never in `finishedQuests`.
+
+### 5 · Derived / inferred
+- **Life path** — `metadata.lifePath` field → filters path-exclusive prologue quests
+- **PL path** — `q306_reed_killed` FactsDB fact → `pl_path = "songbird"` or `"reed"` → filters the non-taken branch quests (shown as dim "branch" rows when Branches toggle is on)
+- **q305 chain** — `q305_done` is never written by the game; completion is inferred from `q306_done` (you cannot reach q306 without completing q305)
+
+### Known undetectable quests
+A few quests write nothing to any tracking system and must be confirmed manually:
+
+| Quest | Why undetectable | How handled |
+|-------|-----------------|-------------|
+| mq045 Paid in Full | Single-interaction payment, no fact or finishedQuests entry | `tracker_weapons.json: "mq045": true` |
 
 ---
 
@@ -219,7 +267,7 @@ The catalog in `cp2077_catalog.py` covers:
 |----------|-------|
 | Main Story (Acts 1–3 + epilogues) | 40 |
 | Side Jobs | 34 |
-| Phantom Liberty (main + both path branches) | 27 |
+| Phantom Liberty (main, Songbird path; Reed branch shown as toggle) | 19 |
 | PL Side Quests & Activities | 16 |
 | Minor Activities | 47 |
 | Gigs — Watson | 23 |
@@ -232,7 +280,7 @@ The catalog in `cp2077_catalog.py` covers:
 | Cyberpsycho Sightings | 17 |
 | NCPD Reported Crimes | 45 |
 | Iconic Weapons | 34 |
-| **Total** | **342** |
+| **Total (tracked)** | **334** |
 
 Quest IDs are validated against the [CDPR modding wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids).
 
