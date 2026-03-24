@@ -337,7 +337,9 @@ input[type=search]::placeholder{color:var(--muted)}
 .q-info{flex:1;min-width:0}
 .q-name{font-size:12px;color:var(--text);line-height:1.3}
 .q-todo .q-name{color:var(--muted)}
-.q-dep{font-size:9px;color:#3a6a8a;letter-spacing:.3px;margin-left:6px;opacity:.8}
+.q-dep{font-size:9px;color:#3a6a8a;letter-spacing:.3px;margin-left:6px;opacity:.8;cursor:pointer;transition:filter .2s;user-select:none}
+.q-dep.spoiler{filter:blur(3px);color:#2a4a6a}
+.q-dep.spoiler:hover{filter:blur(1.5px)}
 .q-id{font-size:10px;color:#445;margin-top:1px;font-family:'Courier New',monospace}
 .q-ts{font-size:9px;color:#2a5a3a;margin-left:8px;letter-spacing:.3px;opacity:.8}
 .q-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
@@ -658,7 +660,7 @@ function renderQuestPanels() {
         return `<div class="quest-row ${rowClass}" data-done="${q.done}" data-id="${q.id}" data-name="${q.name.toLowerCase()}" data-tags="${dedup.join(' ')}" data-manual="${q.manual||false}" data-branch="${!!q.branch}" data-unc="${!!q.uncompletable}">
           <span class="q-check">${q.done?'✓':'○'}</span>
           <div class="q-info">
-            <div class="q-name">${q.name}${extraLabel}${q.dep?`<span class="q-dep">▸ ${q.dep}</span>`:''}${wikiUrl?` <a class="q-wiki" href="${wikiUrl}" target="_blank" title="Open on wiki" onclick="event.stopPropagation()">WIKI ↗</a>`:''}<button class="q-report" onclick="reportIssue('${q.id}','${cat.label.replace(/'/g,"\\'")}','${q.name.replace(/'/g,"\\'")}',${q.done},event)" title="Report issue">⚑ REPORT</button></div>
+            <div class="q-name">${q.name}${extraLabel}${q.dep?`<span class="q-dep spoiler" onclick="this.classList.toggle('spoiler')" title="Click to reveal">▸ ${q.dep}</span>`:''}${wikiUrl?` <a class="q-wiki" href="${wikiUrl}" target="_blank" title="Open on wiki" onclick="event.stopPropagation()">WIKI ↗</a>`:''}<button class="q-report" onclick="reportIssue('${q.id}','${cat.label.replace(/'/g,"\\'")}','${q.name.replace(/'/g,"\\'")}',${q.done},event)" title="Report issue">⚑ REPORT</button></div>
             <div class="q-id">${q.id}${q.done&&q.completed_at?`<span class="q-ts">${q.completed_at}</span>`:''}</div>
             <div class="q-tags">${dedup.map(t=>`<span class="q-tag t-${t}" data-tag="${t}">${t}</span>`).join('')}</div>
           </div>
