@@ -22,7 +22,7 @@ from cp2077_save    import load_latest_save, parse_save
 from tracker_engine import build_catalog_data, generate_html
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SAVE_ROOT   = Path(r"C:\Users\defes\Saved Games\CD Projekt Red\Cyberpunk 2077")
+SAVE_ROOT   = Path.home() / "Saved Games" / "CD Projekt Red" / "Cyberpunk 2077"
 OUTPUT_FILE = Path(__file__).parent / "tracker_dashboard.html"
 GAME_TITLE  = "CP2077 · 100% Tracker"
 WIKI_BASE   = "https://cyberpunk.fandom.com/wiki/"

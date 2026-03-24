@@ -138,15 +138,15 @@ QUEST_CATALOG = [
       {"id": "q304_netrunners",    "name": "I've Seen That Face Before",   "dep": "after Firestarter",                  "check_id": "q304", "tags": ["pl-main", "songbird"]},
       {"id": "q304_stadium",       "name": "Birds with Broken Wings",      "dep": "after I've Seen That Face Before",   "check_id": "q304", "tags": ["pl-main"]},
       # Branches after Birds with Broken Wings — Reed or Songbird path
-      # Reed path — check q305_done fact (set when chain completes)
-      {"id": "q305_prison_convoy",  "name": "Black Steel in the Hour of Chaos", "dep": "Birds with Broken Wings: Reed path",    "check_fact": "q305_done", "tags": ["pl-main", "reed"]},
-      {"id": "q305_bunker",         "name": "Somewhat Damaged",                 "dep": "after Black Steel (Reed path)",         "check_fact": "q305_done", "tags": ["pl-main", "reed"]},
-      {"id": "q305_postcontent",    "name": "This Corrosion",                   "dep": "after Somewhat Damaged (Reed path)",    "check_fact": "q305_done", "tags": ["pl-main", "reed"]},
-      {"id": "q305_reed_epilogue",  "name": "Four Score and Seven",             "dep": "Reed path finale",                      "check_fact": "q305_done", "tags": ["pl-main", "ending", "reed"]},
+      # Reed path — q305_done is never written; chain off q306_done (set when both paths complete)
+      {"id": "q305_prison_convoy",  "name": "Black Steel in the Hour of Chaos", "dep": "Birds with Broken Wings: Reed path",    "check_fact": "q306_done", "tags": ["pl-main", "reed"]},
+      {"id": "q305_bunker",         "name": "Somewhat Damaged",                 "dep": "after Black Steel (Reed path)",         "check_fact": "q306_done", "tags": ["pl-main", "reed"]},
+      {"id": "q305_postcontent",    "name": "This Corrosion",                   "dep": "after Somewhat Damaged (Reed path)",    "check_fact": "q306_done", "tags": ["pl-main", "reed"]},
+      {"id": "q305_reed_epilogue",  "name": "Four Score and Seven",             "dep": "Reed path finale",                      "check_fact": "q306_done", "tags": ["pl-main", "ending", "reed"]},
       {"id": "q306_postcontent",    "name": "From Her to Eternity",             "dep": "Four Score and Seven (Reed path)",      "check_fact": "q306_done", "tags": ["pl-main", "ending", "reed"]},
       {"id": "q306_reed_epilogue",  "name": "Through Pain to Heaven",           "dep": "From Her to Eternity (Reed path)",      "check_fact": "q306_done", "tags": ["pl-main", "ending", "reed"]},
       # Songbird path — check q306_done fact
-      {"id": "q305_border_crossing","name": "Leave in Silence",                 "dep": "Birds with Broken Wings: Songbird path","check_fact": "q305_done", "tags": ["pl-main", "songbird"]},
+      {"id": "q305_border_crossing","name": "Leave in Silence",                 "dep": "Birds with Broken Wings: Songbird path","check_fact": "q306_done", "tags": ["pl-main", "songbird"]},
       {"id": "q306_devils_bargain", "name": "The Killing Moon",                 "dep": "after Leave in Silence (Songbird path)","check_fact": "q306_done", "tags": ["pl-main", "ending", "songbird"]},
       {"id": "q306_somi_epilogue",  "name": "Unfinished Sympathy",              "dep": "after The Killing Moon (Songbird path)","check_fact": "q306_done", "tags": ["pl-main", "ending", "songbird"]},
       # Shared epilogue — check q307_done fact
@@ -519,12 +519,17 @@ QUEST_CATALOG = [
   },
 ]
 
-# ── Life path filtering ────────────────────────────────────────────────────────
-# Maps metadata.lifePath values → tag string used on life-path-exclusive quests
+# ── Path filtering ─────────────────────────────────────────────────────────────
+# Maps save key values → tag string used on path-exclusive quests.
+# Checked against both save['life_path'] and save['pl_path'].
 LIFE_PATH_TAG: dict[str, str] = {
+    # Life path (save['life_path'])
     "Corporate": "corpo",
     "Nomad":     "nomad",
     "StreetKid": "street-kid",
+    # PL path (save['pl_path']) — detected from q306_reed_killed fact
+    "songbird":  "songbird",
+    "reed":      "reed",
 }
 
 # ── Suppress set ──────────────────────────────────────────────────────────────

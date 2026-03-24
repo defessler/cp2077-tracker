@@ -86,9 +86,11 @@ def build_catalog_data(save: dict,
   Args:
     save:           SaveData dict from the game adapter.
     catalog:        Quest catalog (list of category dicts).
-    life_path_tags: Maps save['life_path'] values to tag strings so quests
-                    tagged with a life-path tag are skipped for other paths.
-                    E.g. {"Corporate": "corpo", "Nomad": "nomad"}.
+    life_path_tags: Maps save key values to tag strings so quests tagged
+                    with a path tag are skipped for non-matching players.
+                    Checked against both save['life_path'] and save['pl_path'].
+                    E.g. {"Corporate": "corpo", "Nomad": "nomad",
+                          "songbird": "songbird", "reed": "reed"}.
     suppress_ids:   Set of quest IDs to exclude from the 'Uncatalogued'
                     category (parent flags, duplicate IDs, sandbox IDs, etc.).
   """
@@ -99,10 +101,13 @@ def build_catalog_data(save: dict,
   manual_results = save.get("manual_results", {})
 
   all_lp_tags: set[str] = set()
-  player_lp: str = ""
+  player_tags: set[str] = set()
   if life_path_tags:
     all_lp_tags = set(life_path_tags.values())
-    player_lp   = life_path_tags.get(save.get("life_path", ""), "")
+    for save_key in ("life_path", "pl_path"):
+      tag = life_path_tags.get(save.get(save_key, ""), "")
+      if tag:
+        player_tags.add(tag)
 
   catalogued_ids: set[str] = set()
   result: list[dict] = []
@@ -110,10 +115,10 @@ def build_catalog_data(save: dict,
   for cat_idx, cat in enumerate(catalog):
     quests_out: list[dict] = []
     for q_idx, q in enumerate(cat["quests"]):
-      # Skip life-path quests that don't apply to this player
+      # Skip path-exclusive quests that don't apply to this player
       q_tags       = set(q.get("tags", []))
       lp_on_quest  = q_tags & all_lp_tags
-      if lp_on_quest and player_lp not in lp_on_quest:
+      if lp_on_quest and not (lp_on_quest & player_tags):
         continue
 
       check_id   = q.get("check_id", q["id"])

@@ -81,7 +81,7 @@ def _wanted_fact_hashes(catalog: list[dict]) -> dict[int, str]:
   names.update([
     "sq030_judy_lover", "sq012_fact_warn_river", "q003_royce_dead",
     "q103_helped_panam", "q110_voodoo_queen_dead", "q003_meredith_won",
-    "sq026_maiko_dead", "q112_takemura_dead",
+    "sq026_maiko_dead", "q112_takemura_dead", "q306_reed_killed",
   ])
   return {_fnv1a32(n): n for n in names}
 
@@ -317,20 +317,23 @@ def parse_save(raw: dict, save_root: Path, catalog: list[dict]) -> dict:
     "quest_rewards":   sorted(quest_rewards),
     "completed_at":    _build_completion_timestamps(save_root, catalog),
     "manual_results":  _load_tracker_weapons(Path(__file__).parent),
+    "pl_path":  "songbird" if "q306_reed_killed" in active_facts else ("reed" if "q306_done" in active_facts else ""),
     "choices": {
       # Act 1
-      "Royce":         ("q003_royce_dead"        in active_facts, "Killed",  "Spared",   "The_Heist"),
-      "Militech":      ("q003_meredith_won"      in active_facts, "Meredith","Gilchrist","The_Heist"),
+      "Royce":         ("q003_royce_dead"        in active_facts, "Killed",  "Spared",    "The_Heist"),
+      "Militech":      ("q003_meredith_won"      in active_facts, "Meredith","Gilchrist", "The_Heist"),
       # Act 2
-      "Panam":         ("q103_helped_panam"      in active_facts, "Helped",  "Betrayed", "Ghost_Town_(quest)"),
-      "Voodoo Queen":  ("q110_voodoo_queen_dead" in active_facts, "Dead",    "Alive",    "Gimme_Danger"),
-      "Maiko":         ("sq026_maiko_dead"       in active_facts, "Killed",  "Spared",   "Pisces_(quest)"),
-      "Takemura":      ("q112_takemura_dead"     not in active_facts, "Saved","Died",    "Search_and_Destroy"),
+      "Panam":         ("q103_helped_panam"      in active_facts, "Helped",  "Betrayed",  "Ghost_Town_(quest)"),
+      "Voodoo Queen":  ("q110_voodoo_queen_dead" in active_facts, "Dead",    "Alive",     "Gimme_Danger"),
+      "Maiko":         ("sq026_maiko_dead"       in active_facts, "Killed",  "Spared",    "Pisces_(quest)"),
+      "Takemura":      ("q112_takemura_dead"     not in active_facts, "Saved","Died",     "Search_and_Destroy"),
       # Romance
-      "Judy":          ("sq030_judy_lover"       in active_facts, "Romanced","Friends",  "Pyramid_Song"),
-      "River":         ("sq012_fact_warn_river"  in active_facts, "Warned",  "Silent",   "Following_the_River"),
+      "Judy":          ("sq030_judy_lover"       in active_facts, "Romanced","Friends",   "Pyramid_Song"),
+      "River":         ("sq012_fact_warn_river"  in active_facts, "Warned",  "Silent",    "Following_the_River"),
+      # Phantom Liberty
+      "PL: Reed":      ("q306_reed_killed"       in active_facts, "Killed",  "Alive",     "The_Killing_Moon"),
       # Pending
-      "PL epilogue":   ("q307"                   in finished,     "Done",    "Pending",  "Who_Wants_to_Live_Forever"),
-      "Ending":        ("q113"                   in finished,     "Chosen",  "Pending",  "Nocturne_Op55N1"),
+      "PL epilogue":   ("q307"                   in finished,     "Done",    "Pending",   "Who_Wants_to_Live_Forever"),
+      "Ending":        ("q113"                   in finished,     "Chosen",  "Pending",   "Nocturne_Op55N1"),
     },
   }
