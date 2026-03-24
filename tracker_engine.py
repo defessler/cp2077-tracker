@@ -235,6 +235,18 @@ aside{background:var(--panel);border-right:1px solid var(--border);padding:12px;
 .c-yes{color:var(--green)}.c-no{color:var(--muted)}.c-cyan{color:var(--cyan)}.c-yellow{color:var(--yellow)}
 .attr-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
 
+/* ── choices ── */
+.choice-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-size:12px;gap:4px}
+.choice-label{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.choice-label a{color:var(--muted);text-decoration:none}
+.choice-label a:hover{color:var(--cyan);text-decoration:underline}
+.choice-val{font-size:10px;letter-spacing:.5px;flex-shrink:0;cursor:pointer;user-select:none;padding:1px 5px;border-radius:2px;border:1px solid transparent;transition:filter .2s}
+.choice-val.spoiler{filter:blur(4px);background:#1a1a2a;border-color:#2a2a3a}
+.choice-val.spoiler:hover{filter:blur(2px)}
+.choice-val.c-yes{color:var(--green)}
+.choice-val.c-no{color:var(--muted)}
+.choice-val.c-pending{color:#555;font-style:italic}
+
 /* ── main ── */
 main{padding:16px 20px;overflow-y:auto;max-height:calc(100vh - 56px)}
 
@@ -435,9 +447,26 @@ function renderSidebar() {
     <div class="attr-grid">${Object.entries(s.attributes).map(([k,v])=>
       `<div class="s-row"><span class="s-label">${k}</span><span class="s-val c-cyan">${v}</span></div>`).join('')}
     </div>
-    <div class="s-title">Choices</div>
-    ${Object.entries(s.choices||{}).map(([k,v])=>
-      `<div class="s-row"><span class="s-label">${k}</span><span class="${v?'c-yes':'c-no'}">${v?'Yes':'No'}</span></div>`).join('')}
+    <div class="s-title">Choices <span style="font-size:9px;color:#445;font-weight:normal;letter-spacing:0">(click to reveal)</span></div>
+    ${Object.entries(s.choices||{}).map(([k,v])=>{
+      const wikiBase = (DATA.meta && DATA.meta.wiki_base) || '';
+      // v is [done, yes_label, no_label, wiki_slug] or legacy bool
+      const arr = Array.isArray(v);
+      const done = arr ? v[0] : v;
+      const yesLabel = arr ? v[1] : 'Yes';
+      const noLabel  = arr ? v[2] : 'No';
+      const slug     = arr ? v[3] : null;
+      const label    = slug && wikiBase
+        ? `<a href="${wikiBase}${encodeURIComponent(slug)}" target="_blank" onclick="event.stopPropagation()" title="Open wiki">${k}</a>`
+        : k;
+      const isPending = !done && (yesLabel === 'Saved' || noLabel === 'Pending' || yesLabel === 'Done' || yesLabel === 'Chosen' || yesLabel === 'Paid');
+      const valClass = done ? 'c-yes' : isPending ? 'c-pending' : 'c-no';
+      const valText  = done ? yesLabel : noLabel;
+      return `<div class="choice-row">
+        <span class="choice-label">${label}</span>
+        <span class="choice-val spoiler ${valClass}" onclick="this.classList.toggle('spoiler')" title="Click to reveal">${valText}</span>
+      </div>`;
+    }).join('')}
     <div class="s-title">Progress</div>
     <div id="sidebarProgress"></div>
   `;

@@ -81,7 +81,7 @@ def _wanted_fact_hashes(catalog: list[dict]) -> dict[int, str]:
   names.update([
     "sq030_judy_lover", "sq012_fact_warn_river", "q003_royce_dead",
     "q103_helped_panam", "q110_voodoo_queen_dead", "q003_meredith_won",
-    "ep1_side_content", "sq026_maiko_dead",
+    "sq026_maiko_dead", "q112_takemura_dead",
   ])
   return {_fnv1a32(n): n for n in names}
 
@@ -319,16 +319,19 @@ def parse_save(raw: dict, save_root: Path, catalog: list[dict]) -> dict:
     "manual_results":  _load_tracker_weapons(Path(__file__).parent),
     "choices": {
       # Act 1
-      "Royce killed":      "q003_royce_dead"        in active_facts,
-      "Meredith won":      "q003_meredith_won"      in active_facts,
+      "The Heist: Royce":        ("q003_royce_dead"        in active_facts, "Killed",      "Spared",      "The_Heist"),
+      "The Heist: Militech":     ("q003_meredith_won"      in active_facts, "Meredith won","Gilchrist won","The_Heist"),
       # Act 2
-      "Helped Panam":      "q103_helped_panam"      in active_facts,
-      "Voodoo Queen dead": "q110_voodoo_queen_dead" in active_facts,
-      "Maiko killed":      "sq026_maiko_dead"       in active_facts,
+      "Ghost Town: Panam":       ("q103_helped_panam"      in active_facts, "Helped",      "Betrayed",    "Ghost_Town_(quest)"),
+      "Gimme Danger: Voodoo":    ("q110_voodoo_queen_dead" in active_facts, "Queen dead",  "Queen alive", "Gimme_Danger"),
+      "Pisces: Maiko":           ("sq026_maiko_dead"       in active_facts, "Killed",      "Spared",      "Pisces_(quest)"),
+      "Search & Destroy: Goro":  ("q112_takemura_dead"     not in active_facts, "Saved",   "Died",        "Search_and_Destroy"),
       # Romance
-      "Romanced Judy":     "sq030_judy_lover"       in active_facts,
-      "River — warned":    "sq012_fact_warn_river"  in active_facts,
-      # Phantom Liberty
-      "PL: DLC active":    "ep1_side_content"       in active_facts,
+      "Pyramid Song: Judy":      ("sq030_judy_lover"       in active_facts, "Romanced",    "Friends",     "Pyramid_Song"),
+      "Following the River":     ("sq012_fact_warn_river"  in active_facts, "Warned River","No warning",  "Following_the_River"),
+      # Pending
+      "Paid in Full: Viktor":    ("mq045"                  in finished,     "Paid",        "Not paid",    "Paid_in_Full"),
+      "PL: Who Wants to Live…":  ("q307"                   in finished,     "Done",        "Pending",     "Who_Wants_to_Live_Forever"),
+      "Nocturne Op55N1 (ending)":("q113"                   in finished,     "Chosen",      "Pending",     "Nocturne_Op55N1"),
     },
   }
