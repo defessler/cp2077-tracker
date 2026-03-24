@@ -319,18 +319,18 @@ def parse_save(raw: dict, save_root: Path, catalog: list[dict]) -> dict:
     "manual_results":  _load_tracker_weapons(Path(__file__).parent),
     "choices": {
       # Act 1
-      "The Heist: Royce":        ("q003_royce_dead"        in active_facts, "Killed",      "Spared",      "The_Heist"),
-      "The Heist: Militech":     ("q003_meredith_won"      in active_facts, "Meredith won","Gilchrist won","The_Heist"),
+      "Royce":         ("q003_royce_dead"        in active_facts, "Killed",  "Spared",   "The_Heist"),
+      "Militech":      ("q003_meredith_won"      in active_facts, "Meredith","Gilchrist","The_Heist"),
       # Act 2
-      "Ghost Town: Panam":       ("q103_helped_panam"      in active_facts, "Helped",      "Betrayed",    "Ghost_Town_(quest)"),
-      "Gimme Danger: Voodoo":    ("q110_voodoo_queen_dead" in active_facts, "Queen dead",  "Queen alive", "Gimme_Danger"),
-      "Pisces: Maiko":           ("sq026_maiko_dead"       in active_facts, "Killed",      "Spared",      "Pisces_(quest)"),
-      "Search & Destroy: Goro":  ("q112_takemura_dead"     not in active_facts, "Saved",   "Died",        "Search_and_Destroy"),
+      "Panam":         ("q103_helped_panam"      in active_facts, "Helped",  "Betrayed", "Ghost_Town_(quest)"),
+      "Voodoo Queen":  ("q110_voodoo_queen_dead" in active_facts, "Dead",    "Alive",    "Gimme_Danger"),
+      "Maiko":         ("sq026_maiko_dead"       in active_facts, "Killed",  "Spared",   "Pisces_(quest)"),
+      "Takemura":      ("q112_takemura_dead"     not in active_facts, "Saved","Died",    "Search_and_Destroy"),
       # Romance
-      "Pyramid Song: Judy":      ("sq030_judy_lover"       in active_facts, "Romanced",    "Friends",     "Pyramid_Song"),
-      "Following the River":     ("sq012_fact_warn_river"  in active_facts, "Warned River","No warning",  "Following_the_River"),
-      # Pending — endings
-      "PL: Who Wants to Live…":  ("q307"                   in finished,     "Done",        "Pending",     "Who_Wants_to_Live_Forever"),
-      "Nocturne Op55N1 (ending)":("q113"                   in finished,     "Chosen",      "Pending",     "Nocturne_Op55N1"),
+      "Judy":          ("sq030_judy_lover"       in active_facts, "Romanced","Friends",  "Pyramid_Song"),
+      "River":         ("sq012_fact_warn_river"  in active_facts, "Warned",  "Silent",   "Following_the_River"),
+      # Pending
+      "PL epilogue":   ("q307"                   in finished,     "Done",    "Pending",  "Who_Wants_to_Live_Forever"),
+      "Ending":        ("q113"                   in finished,     "Chosen",  "Pending",  "Nocturne_Op55N1"),
     },
   }
