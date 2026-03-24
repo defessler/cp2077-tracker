@@ -81,7 +81,7 @@ def _wanted_fact_hashes(catalog: list[dict]) -> dict[int, str]:
   names.update([
     "sq030_judy_lover", "sq012_fact_warn_river", "q003_royce_dead",
     "q103_helped_panam", "q110_voodoo_queen_dead", "q003_meredith_won",
-    "ep1_side_content",
+    "ep1_side_content", "sq026_maiko_dead",
   ])
   return {_fnv1a32(n): n for n in names}
 
@@ -318,12 +318,17 @@ def parse_save(raw: dict, save_root: Path, catalog: list[dict]) -> dict:
     "completed_at":    _build_completion_timestamps(save_root, catalog),
     "manual_results":  _load_tracker_weapons(Path(__file__).parent),
     "choices": {
-      "Romanced Judy":     "sq030_judy_lover"       in active_facts,
-      "River — saved":     "sq012_fact_warn_river"  in active_facts,
+      # Act 1
       "Royce killed":      "q003_royce_dead"        in active_facts,
+      "Meredith won":      "q003_meredith_won"      in active_facts,
+      # Act 2
       "Helped Panam":      "q103_helped_panam"      in active_facts,
       "Voodoo Queen dead": "q110_voodoo_queen_dead" in active_facts,
-      "Meredith won":      "q003_meredith_won"      in active_facts,
-      "PL active":         "ep1_side_content"       in active_facts,
+      "Maiko killed":      "sq026_maiko_dead"       in active_facts,
+      # Romance
+      "Romanced Judy":     "sq030_judy_lover"       in active_facts,
+      "River — warned":    "sq012_fact_warn_river"  in active_facts,
+      # Phantom Liberty
+      "PL: DLC active":    "ep1_side_content"       in active_facts,
     },
   }
